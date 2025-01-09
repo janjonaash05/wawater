@@ -13,8 +13,8 @@ app.use(express.urlencoded({extended: false}));
 const conn = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "",
-    database: "coffe_lmsoft_cz",
+    password: "root",
+    database: "wawater",
     port: 3306
 });
 
@@ -54,98 +54,208 @@ const saltRounds = 10;
 
 app.post('/firm/register-client', authenticateAdmin, async (req, res) => {
 
-    let password = Math.random().toString(36).slice(2, 8);
 
     const {firm_id, firm_name, client_username, client_email} = req.body;
 
 
-    bcrypt.genSalt(saltRounds, (err, salt) => {
-        if (err) {
-            res.status(500).json({msg: err});
-            return;
-        }
-        bcrypt.hash(password, salt, (err, hash) => {
+    let errCallback = (err) => {
+        res.status(500).json({msg: err});
+    };
+    let successCallback = (password, hash) => {
+
+
+        conn.query("Insert into Client(username, password,email,is_admin, firm_id) values (?,?,?,?,?)", [client_username, hash, client_email, false, firm_id], (err, result_client) => {
             if (err) {
                 res.status(500).json({msg: err});
                 return;
             }
 
-            conn.query("insert into User(username, password) values (?,?)", [client_username, hash], (err, result_user) => {
-                if (err) {
-                    res.status(500).json({msg: err});
-                    return;
+            let mailOptions = {
+                from: mymail,
+                to: client_email,
+                subject: 'Registration at ' + firm_name,
+                text: 'Username: ' + client_username + " password: " + password
+            };
+
+            transporter.sendMail(mailOptions, function (error, info) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    res.status(200).json({msg: info});
                 }
-                conn.query("Insert into Client(email, user_id, firm_id) values (?,?,?)",[client_email,result_user.insertId, firm_id], (err, result_client) =>
-                {
-                    if (err) {
-                        res.status(500).json({msg: err});
-                        return;
-                    }
+            });
+        })
+    };
 
-                    let mailOptions = {
-                        from: mymail,
-                        to: client_email,
-                        subject: 'Registration at '+firm_name,
-                        text: 'Username: '+client_username + " password: "+password
-                    };
 
-                    transporter.sendMail(mailOptions, function(error, info){
-                        if (error) {
-                            console.log(error);
-                        } else {
-                           res.status(200).json({msg: info});
-                        }
-                    });
-                })
-            })
-        });
-    });
+    generateAPassword(errCallback, successCallback);
 });
 
-app.get("/firm/update-client",authenticateAdmin, (req, res) => {
+app.put("/firm/update-client", authenticateAdmin, (req, res) => {
+
+    const {firm_name, client_username, client_email, change_password} = req.body;
+
+    let params = [];
+    let query = "Update Client set ";
+    if(client_username)
+    {
+        query += " username = ? and";
+        params.push(client_username);
+    }
+    if(client_email)
+    {
+        query += " email = ? and";
+        params.push(client_email);
+    }
+    if(change_password)
+    {
+        query += " password = ? and";
+    }
+    query = query.slice(0, query.length-3);
+
+    let errCallback = (err) => {
+        res.status(500).json({msg: err});
+    };
+
+
+    let updateCallback = (potentialPassword, potentialHash) =>
+    {
+        if(potentialHash)
+        {
+            params.push(potentialHash);
+        }
+
+
+        conn.query(query,params, (err, result_client) => {
+            if (err) {
+                res.status(500).json({msg: err});
+                return;
+            }
+
+            let mailOptions = {
+                from: mymail,
+                to: client_email,
+                subject: 'Update at ' + firm_name,
+                text: 'Username: ' + client_username + (potentialPassword ? " password: " + potentialPassword : "")
+            };
+
+            transporter.sendMail(mailOptions, function (error, info) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    res.status(200).json({msg: info});
+                }
+            });
+        })
+
+    }
+
+    if(change_password)
+    {
+        generateAPassword(errCallback, updateCallback)
+    }
+    else
+    {
+        updateCallback(null,null);
+    }
 
 
 })
 
 
+function generateAPassword(errorCallback, callback) {
+    let password = Math.random().toString(36).slice(2, 8);
+    bcrypt.genSalt(saltRounds, (err, salt) => {
+        if (err) {
+            errorCallback(err);
+            return;
+        }
+        bcrypt.hash(password, salt, (err, hash) => {
+            if (err) {
+                errorCallback(err);
+                return;
+
+            }
+
+            callback(password, hash);
+
+        })
+    });
 
 
+}
 
-function authenticate(req, res, next) {
+
+function ExtractUsernamePasswordFromRequest(errCallback, req) {
     const authHeader = req.headers['authorization']
+    if (!authHeader) {
 
-    if (!authHeader) res.status(401).send("Unathorized");
-
+        errCallback();
+        return [null,null];
+    }
 
     const login = Buffer.from(authHeader.split(' ')[1], "base64").toString();
     console.log(login);
     const username = login.split(":")[0];
     const password = login.split(":")[1];
 
+    return [username, password];
 
-    console.log(username + " " + password);
-    if (username != "coffe" || password != "kafe") {
-        res.status(401).send("Unathorized");
-        return;
-    }
+}
+
+
+function authenticateClient(req, res, next) {
+    let errCallback = () => {res.status(401).send("Unathorized")}
+    [username,password] = ExtractUsernamePasswordFromRequest(errCallback, req);
+
+    if(!username) return;
+
+
+    conn.query("Select password from User where username = ?", [username, password], (err, results_user) => {
+        if (results_user.length === 0) {
+            return res.status(400).json({msg: "User does not exist"});
+        }
+        bcrypt.compare(password, Buffer.from(results_user[0].password).toString(), (err, r) => {
+            if (err) {
+                return res.status(527).json({msg: err.message});
+            }
+
+            if (r) {
+                next();
+            } else {
+                res.status(400).json({msg: "Incorrect password"});
+            }
+
+        });
+
+    })
+
+
+
 
     next()
 }
 
 
 function authenticateAdmin(req, res, next) {
-    const authHeader = req.headers['authorization']
-
-    if (!authHeader) res.status(401).send("Unathorized");
-
-
-    const login = Buffer.from(authHeader.split(' ')[1], "base64").toString();
-    console.log(login);
-    const username = login.split(":")[0];
-    const password = login.split(":")[1];
+    // const authHeader = req.headers['authorization']
+    //
+    // if (!authHeader) res.status(401).send("Unathorized");
+    // const login = Buffer.from(authHeader.split(' ')[1], "base64").toString();
+    // console.log(login);
+    // const username = login.split(":")[0];
+    // const password = login.split(":")[1];
 
 
-    conn.query("Select id, password from User where username = ?", [username], (err, results_admin) => {
+
+    let errCallback = () => {res.status(401).send("Unathorized")}
+    [username,password] = ExtractUsernamePasswordFromRequest(errCallback, req);
+
+    if(!username) return;
+
+
+
+    conn.query("Select firm_id, password from User where username = ? and admin = true", [username], (err, results_admin) => {
         if (results_admin.length === 0) {
             return res.status(400).json({msg: "User does not exist"});
         }
@@ -156,10 +266,13 @@ function authenticateAdmin(req, res, next) {
                 return res.status(527).json({msg: err.message});
             }
 
+
+            let firm_id = results_admin[0].id
+
             if (r) {
-                conn.query("Select name, id from Firm where user_admin_id = ?", [results_admin[0].id], (err, result_firm) => {
+                conn.query("Select name from Firm where id = ?", [firm_id], (err, result_firm) => {
                     req.body.firm_name = result_firm[0].name;
-                    req.body.firm_id = result_firm[0].id;
+                    req.body.firm_id = firm_id;
                     next();
 
                 });
@@ -170,67 +283,6 @@ function authenticateAdmin(req, res, next) {
         });
 
     })
-}
-
-function getAll(tablename, callback) {
-    let res;
-    conn.query('SELECT * FROM ' + tablename, (err, results) => {
-        if (err) {
-            console.error('Error executing query: ' + err.stack);
-            res.status(500).send('Error fetching users');
-            return;
-        }
-        callback(err, results)
-
-    });
-}
-
-function getSummaryOfDrinks(month, callback) {
-    let query = "SELECT types.typ, count(drinks.ID) as pocet,people.name as osoba FROM `drinks` JOIN people on drinks.id_people=people.ID JOIN types on drinks.id_types=types.ID";
-    if (month > 0 && month < 13) {
-        query += " WHERE MONTH( `date` ) = " + month;
-    }
-    query += " group by types.typ"
-
-
-    let res;
-    conn.query(query, (err, results) => {
-        if (err) {
-
-            console.log(results);
-            console.error('Error executing query: ' + err.stack);
-            res.status(500).send('Error fetching users');
-            return;
-        }
-
-        callback(err, results)
-
-    });
-}
-
-
-function saveDrinks(id_people, drinks, callback) {
-    let date_time = new Date();
-    const date = date_time.getFullYear() + "-" + (date_time.getMonth() + 1) + "-" + date_time.getDate();
-    let query = `INSERT INTO DRINKS(date, id_people, id_types) values `;
-
-    for (let i = 0; i < drinks.length; i++) {
-        for (let j = 0; j < drinks[i]; j++) {
-
-            query += `${(i == 0 && j == 0) ? "" : ","}('${date}',${id_people},${i + 1}) `
-        }
-    }
-
-    console.log(query);
-
-    conn.query(query) , (err, results) => {
-        if (err) {
-            res.status(500).send('Error fetching users');
-            return;
-        }
-        console.log(results);
-        callback(err, results)
-    }
 }
 
 
