@@ -11,7 +11,7 @@ app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
 const conn = mysql.createConnection({
-    host: "localhost",
+    host: "127.0.0.1",
     user: "root",
     password: "root",
     database: "wawater",
@@ -20,7 +20,7 @@ const conn = mysql.createConnection({
 
 conn.connect(function (err) {
     if (err) {
-        console.error('Error connecting to MySQL: ' + err.stack);
+        console.error('Error connecting to MySQL: LOLOLOL' + err.message + " " + err.stack);
     }
 });
 
@@ -36,7 +36,7 @@ const transporter = nodemailer.createTransport({
 });
 
 
-const PORT = 8083
+const PORT = 9009;
 
 var str =
     `{
@@ -52,11 +52,18 @@ client_email: ..,
 
 const saltRounds = 10;
 
-app.post('/firm/register-client', authenticateAdmin, async (req, res) => {
+app.get('/firm/deez', (req, res) => {
+
+    res.status(200).json({msg:"nuts"});
+})
+
+
+app.post('/firm/client', authenticateAdmin, async (req, res) => {
 
 
     const {firm_id, firm_name, client_username, client_email} = req.body;
 
+    const {assign_admin} = req.body;
 
     let errCallback = (err) => {
         res.status(500).json({msg: err});
@@ -64,7 +71,7 @@ app.post('/firm/register-client', authenticateAdmin, async (req, res) => {
     let successCallback = (password, hash) => {
 
 
-        conn.query("Insert into Client(username, password,email,is_admin, firm_id) values (?,?,?,?,?)", [client_username, hash, client_email, false, firm_id], (err, result_client) => {
+        conn.query("Insert into Client(username, password,email,is_admin, firm_id) values (?,?,?,?,?)", [client_username, hash, client_email, assign_admin ?? false, firm_id], (err, result_client) => {
             if (err) {
                 res.status(500).json({msg: err});
                 return;
@@ -91,42 +98,37 @@ app.post('/firm/register-client', authenticateAdmin, async (req, res) => {
     generateAPassword(errCallback, successCallback);
 });
 
-app.put("/firm/update-client", authenticateAdmin, (req, res) => {
+app.put("/firm/client", authenticateAdmin, (req, res) => {
 
     const {firm_name, client_username, client_email, change_password} = req.body;
 
     let params = [];
     let query = "Update Client set ";
-    if(client_username)
-    {
+    if (client_username) {
         query += " username = ? and";
         params.push(client_username);
     }
-    if(client_email)
-    {
+    if (client_email) {
         query += " email = ? and";
         params.push(client_email);
     }
-    if(change_password)
-    {
+    if (change_password) {
         query += " password = ? and";
     }
-    query = query.slice(0, query.length-3);
+    query = query.slice(0, query.length - 3);
 
     let errCallback = (err) => {
         res.status(500).json({msg: err});
     };
 
 
-    let updateCallback = (potentialPassword, potentialHash) =>
-    {
-        if(potentialHash)
-        {
+    let updateCallback = (potentialPassword, potentialHash) => {
+        if (potentialHash) {
             params.push(potentialHash);
         }
 
 
-        conn.query(query,params, (err, result_client) => {
+        conn.query(query, params, (err, result_client) => {
             if (err) {
                 res.status(500).json({msg: err});
                 return;
@@ -150,17 +152,21 @@ app.put("/firm/update-client", authenticateAdmin, (req, res) => {
 
     }
 
-    if(change_password)
-    {
+    if (change_password) {
         generateAPassword(errCallback, updateCallback)
-    }
-    else
-    {
-        updateCallback(null,null);
+    } else {
+        updateCallback(null, null);
     }
 
 
 })
+
+
+app.delete("/firm/client", authenticateAdmin, (req, res) => {
+
+});
+
+app.get("/client/validate")
 
 
 function generateAPassword(errorCallback, callback) {
@@ -191,7 +197,7 @@ function ExtractUsernamePasswordFromRequest(errCallback, req) {
     if (!authHeader) {
 
         errCallback();
-        return [null,null];
+        return [null, null];
     }
 
     const login = Buffer.from(authHeader.split(' ')[1], "base64").toString();
@@ -205,10 +211,12 @@ function ExtractUsernamePasswordFromRequest(errCallback, req) {
 
 
 function authenticateClient(req, res, next) {
-    let errCallback = () => {res.status(401).send("Unathorized")}
-    [username,password] = ExtractUsernamePasswordFromRequest(errCallback, req);
+    let errCallback = () => {
+        res.status(401).send("Unathorized")
+    }
+    const [username, password] = ExtractUsernamePasswordFromRequest(errCallback, req);
 
-    if(!username) return;
+    if (!username) return;
 
 
     conn.query("Select password from User where username = ?", [username, password], (err, results_user) => {
@@ -231,8 +239,6 @@ function authenticateClient(req, res, next) {
     })
 
 
-
-
     next()
 }
 
@@ -247,11 +253,32 @@ function authenticateAdmin(req, res, next) {
     // const password = login.split(":")[1];
 
 
+    let errCallback = () => {
+        res.status(401).send("Unathorized")
+    }
+    const [username, password] = ExtractUsernamePasswordFromRequest(errCallback, req);
 
-    let errCallback = () => {res.status(401).send("Unathorized")}
-    [username,password] = ExtractUsernamePasswordFromRequest(errCallback, req);
 
-    if(!username) return;
+    if (!username) {
+        errCallback();
+        return;
+    }
+
+    if(req.body.assign_admin == true)
+    {
+        if (username == "SYSADMIN" && password == "1234") {
+            conn.query("select id from Firm where name = ? and not exists (select 1 from Client where is_admin = true and firm_id = id);", [req.body.firm_name], (err, result) => {
+                if (result.length === 0) {
+                    res.status(400).json({msg: "Firm does not exists or already has assigned admin"});
+                }
+
+                req.body.firm_id = result[0].id;
+                next();
+            });
+
+
+        }
+    }
 
 
 
