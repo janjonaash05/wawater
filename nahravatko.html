@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nahrání dat měření</title>
+    <style>
+        * {
+            transition: all 0.5s ease-out;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: #071c39;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            place-content: center;
+            align-items: center;
+        }
+
+        .gradient {
+            --size: 750px;
+            --speed: 50s;
+            --easing: cubic-bezier(0.8, 0.2, 0.2, 0.8);
+            width: var(--size);
+            height: var(--size);
+            filter: blur(calc(var(--size) / 5));
+            background-image: linear-gradient(hsl(222, 84%, 60%), hsl(164, 79%, 71%));
+            animation: rotate var(--speed) var(--easing) alternate infinite;
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            position: fixed;
+            z-index: 1;
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (min-width: 720px) {
+            .gradient {
+                --size: 500px;
+            }
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 800px;
+            margin: 20px;
+            padding: 20px;
+        }
+
+        .form-container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .upload-area:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        .upload-area.dragover {
+            background-color: rgba(0, 123, 255, 0.2);
+            border-color: #0056b3;
+        }
+
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .alert-success {
+            background-color: rgba(212, 237, 218, 0.9);
+            color: #155724;
+        }
+
+        .alert-error {
+            background-color: rgba(248, 215, 218, 0.9);
+            color: #721c24;
+        }
+
+        .tab-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            background: rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {    
+            background: #007bff;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="gradient"></div>
+    <div class="content-wrapper">
+        <div class="form-container">
+            <h1>Nahrání dat měření</h1>
+
+            <div id="successAlert" class="alert alert-success">
+                Data byla úspěšně nahrána
+            </div>
+
+            <div id="errorAlert" class="alert alert-error">
+                Došlo k chybě při nahrávání dat
+            </div>
+
+            <div class="tab-container">
+                <button class="tab-button active" onclick="showTab('file')">Nahrání souboru</button>
+                <button class="tab-button" onclick="showTab('ftp')">FTP přístup</button>
+            </div>
+
+            <div id="fileTab" class="tab-content active">
+                <div class="upload-area" id="dropZone">
+                    <p>Přetáhněte CSV soubor sem nebo</p>
+                    <input type="file" id="fileInput" accept=".csv" style="display: none">
+                    <button onclick="document.getElementById('fileInput').click()">Vyberte soubor</button>
+                    <div id="fileInfo" class="file-info"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="propertySelect">Vyberte nemovitost:</label>
+                    <select id="propertySelect" required>
+                        <option value="">-- Vyberte nemovitost --</option>
+                    </select>
+                </div>
+
+                <button onclick="uploadFile()">Nahrát data</button>
+            </div>
+
+            <div id="ftpTab" class="tab-content">
+                <h3>FTP přístupové údaje</h3>
+                <div class="form-group">
+                    <label>Server: ftp.example.com</label>
+                </div>
+                <div class="form-group">
+                    <label>Uživatelské jméno: Vaše přihlašovací jméno</label>
+                </div>
+                <div class="form-group">
+                    <label>Heslo: Vaše FTP heslo</label>
+                </div>
+                <div class="form-group">
+                    <label>Port: 21</label>
+                </div>
+                <p>Pro získání přístupových údajů kontaktujte správce systému.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // [Previous JavaScript code remains exactly the same]
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                    fileInfo.textContent = `Vybraný soubor: ${file.name}`;
+                } else {
+                    fileInfo.textContent = 'Prosím vyberte CSV soubor';
+                    fileInput.value = '';
+                }
+            }
+        }
+
+        function uploadFile() {
+            const file = fileInput.files[0];
+            const propertyId = document.getElementById('propertySelect').value;
+
+            if (!file || !propertyId) {
+                showError('Prosím vyberte soubor a nemovitost');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('propertyId', propertyId);
+
+            fetch('/api/readings/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                showSuccess();
+                fileInput.value = '';
+                fileInfo.textContent = '';
+            })
+            .catch(error => {
+                showError('Došlo k chybě při nahrávání');
+            });
+        }
+
+        function showSuccess() {
+            const alert = document.getElementById('successAlert');
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        function showError(message) {
+            const alert = document.getElementById('errorAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 3000);
+        }
+
+        fetch('/api/properties')
+            .then(response => response.json())
+            .then(properties => {
+                const select = document.getElementById('propertySelect');
+                properties.forEach(property => {
+                    const option = document.createElement('option');
+                    option.value = property.id;
+                    option.textContent = property.name;
+                    select.appendChild(option);
+                });
+            });
+    </script>
+</body>
+</html>
