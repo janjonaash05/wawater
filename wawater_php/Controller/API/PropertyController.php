@@ -4,23 +4,24 @@ class PropertyController implements IController
    
     public function specific_request($request, $data)
     {
+    
        return match ($request)
        {
-        "get-all" => $this->GetAll(),
+        "get-all" => self::GetAll(),
         default => "asas"
        };
         
     }
 
 
-    private function GetAll()
+    private static function GetAll()
     {
-        return DatabaseConnection::execute_statement("select * from GagueType");
+        return DatabaseConnection::execute_statement("select * from Firm");
     }
  
 
 
-    private function Create($data)
+    private static function Create($data)
     {
         $name = $data["name"];
         $address = $data["address"];
@@ -32,6 +33,7 @@ class PropertyController implements IController
 
 
 
+   
 
 
 

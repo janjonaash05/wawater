@@ -1,34 +1,50 @@
 const express = require("express");
-const path = require("path");
 const mysql = require("mysql2");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
+
+//
+//
+// import express from 'express';
+// import {default as mysql} from 'mysql2';
+// import nodemailer from "nodemailer";
+// import {default as bcrypt} from 'bcryptjs';
+
+
 const app = express();
-
-
-app.use(express.static(path.join(__dirname, "public")));
+//app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
-const conn = mysql.createConnection({
+const conn =  mysql.createPool({
     host: "127.0.0.1",
     user: "root",
     password: "root",
     database: "wawater",
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
     port: 3306
 });
 
-conn.connect(function (err) {
-    if (err) {
-        console.error('Error connecting to MySQL: LOLOLOL' + err.message + " " + err.stack);
-    }
-});
+
+
+// conn.connect(function (err) {
+//     if (err) {
+//         console.error('Error connecting to MySQL: LOLOLOL' + err.message + " " + err.stack);
+//     }
+//     else
+//     {
+//         console.log("Connected to MySQL");
+//     }
+// });
 
 
 const mymail = "j69420j995@gmail.com";
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
+    secure: false,
     auth: {
         user: mymail,
         pass: 'lowkey455@'
@@ -38,27 +54,47 @@ const transporter = nodemailer.createTransport({
 
 const PORT = 9009;
 
-var str =
-    `{
-firm_name: ..,
-client_username: ..,
-client_email: ..,
-
-
-
-
-
-}`
 
 const saltRounds = 10;
 
-app.get('/firm/deez', (req, res) => {
+app.get('/firm/deez',authenticateAdmin, (req, res) => {
 
-    res.status(200).json({msg:"nuts"});
+    conn.query("select id from Firm where name = ? and not exists (select 1 from Client where is_admin = true and firm_id = id)", ["jjc"], (err, result) => {
+        if(err)
+        {
+            res.status(500).json({msg: err});
+            return;
+        }
+        if (result.length === 0) {
+            res.status(400).json({msg: "Firm does not exists or already has assigned admin"});
+            return;
+        }
+        // let mailOptions = {
+        //     from: mymail,
+        //     to: mymail,
+        //     subject: 'Registration at ' + "firm_name",
+        //     text: 'Username: ' + "client_username" + " password: " + "password"
+        // };
+        //
+        // console.log(JSON.stringify(mailOptions));
+        // transporter.sendMail(mailOptions, function (error, info) {
+        //     if (error) {
+        //         console.log(error);
+        //     } else {
+        //         res.status(200).json({msg: info});
+        //     }
+        // });
+        res.status(200).json(result);
+
+        //next();
+
+    });
+
+
 })
 
 
-app.post('/firm/client', authenticateAdmin, async (req, res) => {
+app.post('/firm/client', authenticateAdmin, (req, res) => {
 
 
     const {firm_id, firm_name, client_username, client_email} = req.body;
@@ -77,20 +113,22 @@ app.post('/firm/client', authenticateAdmin, async (req, res) => {
                 return;
             }
 
-            let mailOptions = {
-                from: mymail,
-                to: client_email,
-                subject: 'Registration at ' + firm_name,
-                text: 'Username: ' + client_username + " password: " + password
-            };
+            res.status(200).json({msg: password});
 
-            transporter.sendMail(mailOptions, function (error, info) {
-                if (error) {
-                    console.log(error);
-                } else {
-                    res.status(200).json({msg: info});
-                }
-            });
+            // let mailOptions = {
+            //     from: mymail,
+            //     to: client_email,
+            //     subject: 'Registration at ' + firm_name,
+            //     text: 'Username: ' + client_username + " password: " + password
+            // };
+            //
+            // transporter.sendMail(mailOptions, function (error, info) {
+            //     if (error) {
+            //         console.log(error);
+            //     } else {
+            //         res.status(200).json({msg: info});
+            //     }
+            // });
         })
     };
 
@@ -171,6 +209,7 @@ app.get("/client/validate")
 
 function generateAPassword(errorCallback, callback) {
     let password = Math.random().toString(36).slice(2, 8);
+    console.log(password)
     bcrypt.genSalt(saltRounds, (err, salt) => {
         if (err) {
             errorCallback(err);
@@ -192,7 +231,7 @@ function generateAPassword(errorCallback, callback) {
 }
 
 
-function ExtractUsernamePasswordFromRequest(errCallback, req) {
+function extractUsernamePasswordFromRequest(errCallback, req) {
     const authHeader = req.headers['authorization']
     if (!authHeader) {
 
@@ -209,12 +248,12 @@ function ExtractUsernamePasswordFromRequest(errCallback, req) {
 
 }
 
-
+// bagr:6kw37n
 function authenticateClient(req, res, next) {
     let errCallback = () => {
         res.status(401).send("Unathorized")
     }
-    const [username, password] = ExtractUsernamePasswordFromRequest(errCallback, req);
+    const [username, password] = extractUsernamePasswordFromRequest(errCallback, req);
 
     if (!username) return;
 
@@ -242,47 +281,59 @@ function authenticateClient(req, res, next) {
     next()
 }
 
-
+// admin:msrpvc pro jjc
 function authenticateAdmin(req, res, next) {
-    // const authHeader = req.headers['authorization']
-    //
-    // if (!authHeader) res.status(401).send("Unathorized");
-    // const login = Buffer.from(authHeader.split(' ')[1], "base64").toString();
-    // console.log(login);
-    // const username = login.split(":")[0];
-    // const password = login.split(":")[1];
-
 
     let errCallback = () => {
         res.status(401).send("Unathorized")
     }
-    const [username, password] = ExtractUsernamePasswordFromRequest(errCallback, req);
-
+    const [username, password] = extractUsernamePasswordFromRequest(errCallback, req);
 
     if (!username) {
         errCallback();
         return;
     }
 
-    if(req.body.assign_admin == true)
+    if(req.body.assign_admin === true)
     {
         if (username == "SYSADMIN" && password == "1234") {
-            conn.query("select id from Firm where name = ? and not exists (select 1 from Client where is_admin = true and firm_id = id);", [req.body.firm_name], (err, result) => {
+            conn.query("select id from Firm where name = ? and not exists (select 1 from Client where is_admin = true and firm_id = id)", [req.body.firm_name], (err, result) => {
+                if(err)
+                {
+                    res.status(500).json({msg: err});
+                    return;
+                }
                 if (result.length === 0) {
                     res.status(400).json({msg: "Firm does not exists or already has assigned admin"});
+                    return;
                 }
-
-                req.body.firm_id = result[0].id;
+               // res.status(200).json({msg: result.length});
+                 req.body.firm_id = result[0].id;
+                console.log(JSON.stringify(result));
                 next();
+
+                //next();
+
             });
 
-
+            return;
+        }
+        else
+        {
+            res.status(401).send("Unathorized")
+            return;
         }
     }
 
 
 
-    conn.query("Select firm_id, password from User where username = ? and admin = true", [username], (err, results_admin) => {
+    conn.query("Select firm_id, password from Client where username = ? and is_admin = true", [username], (err, results_admin) => {
+        if(err)
+        {
+            return res.status(527).json({msg: err.message});
+        }
+
+
         if (results_admin.length === 0) {
             return res.status(400).json({msg: "User does not exist"});
         }
@@ -294,10 +345,14 @@ function authenticateAdmin(req, res, next) {
             }
 
 
-            let firm_id = results_admin[0].id
+            let firm_id = results_admin[0].firm_id
 
             if (r) {
                 conn.query("Select name from Firm where id = ?", [firm_id], (err, result_firm) => {
+                    if (err) {
+                        return res.status(527).json({msg: err.message});
+                    }
+
                     req.body.firm_name = result_firm[0].name;
                     req.body.firm_id = firm_id;
                     next();
