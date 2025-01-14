@@ -5,7 +5,7 @@ class DatabaseConnection
     protected static $connection = null;
     private static function Init()
     {
-        echo "initDB";
+      
         try {
             self::$connection = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE_NAME);
     	
@@ -13,7 +13,7 @@ class DatabaseConnection
                 throw new Exception("Could not connect to database.");   
             }
         } catch (Exception $e) {
-            echo $e->getMessage();  
+            return $e->getMessage();  
         }			
     }
     // public static function select($query = "" , $params = [])
@@ -32,15 +32,38 @@ class DatabaseConnection
     //     }
     //     return false;
     // }
-    public static function execute_statement($query = "" , $params = [])
+    
+    public static function execute_statement($query = "" , $params = [],$ignore_result = false)
     {
         try {
 
             if(self::$connection == null) self::Init();
             
-            return self::$connection->execute_query($query, $params )->fetch_all(MYSQLI_ASSOC);
+            if($ignore_result)
+            {
+                self::$connection->execute_query($query, $params );
+                return "OK";
+            } 
+            else 
+            {
+                return self::$connection->execute_query($query, $params )->fetch_all(MYSQLI_ASSOC);
+            }
         } catch(Exception $e) {
-            echo $e->getMessage();  
+            return $e->getMessage().$query;  
         }	
     }
+
+    public static function execute_statement_single_row($query = "" , $params = [])
+    {
+        try {
+
+            if(self::$connection == null) self::Init();
+            
+            return self::$connection->execute_query($query, $params )->fetch_all(MYSQLI_ASSOC)[0];
+        } catch(Exception $e) {
+            return $e->getMessage();  
+        }	
+    }
+
+
 }

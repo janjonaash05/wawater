@@ -1,6 +1,18 @@
 <?php
-class GagueController extends BaseController
+class GagueController implements IController
 {
+    public function specific_request($request, $data,  $username)
+    {
+        
+    }
+
+
+    public static function CreateForUser()
+    {
+        
+    }
+
+
 
 
 }

@@ -2,36 +2,67 @@
 class PropertyController implements IController
 {
    
-    public function specific_request($request, $data)
+    public function specific_request($request, $data,$username )
     {
-    
        return match ($request)
        {
-        "get-all" => self::GetAll(),
-        default => "asas"
+        "get-all" => self::get_all($username),
+        "register" => self::register($data,$username),
+        "update" => self::update($data),
+        "delete" => self::delete($data)
        };
-        
     }
 
 
-    private static function GetAll()
+    private static function get_all($username)
     {
-        return DatabaseConnection::execute_statement("select * from Firm");
+        $client_id = DatabaseConnection::execute_statement_single_row("select id from Client where username = ?",[$username])["id"];
+        return  DatabaseConnection::execute_statement("select * from Property where client_id = ?", [$client_id]);
     }
  
-
-
-    private static function Create($data)
+    private static function register($data, $username)
     {
         $name = $data["name"];
         $address = $data["address"];
-        $client_username = $data["client_username"];
-        
-        $client_id = DatabaseConnection::execute_statement("select id from Client where username = ?",[$client_username]);
-        DatabaseConnection::execute_statement("insert into Property(name,adress,client_id) values (?,?,?)",[$name, $address, $client_id]);
+
+        $client_id = DatabaseConnection::execute_statement_single_row("select id from Client where username = ?",[$username])["id"];
+        return DatabaseConnection::execute_statement("insert into Property(name,address,client_id) values (?,?,?)",[$name, $address, $client_id],true);
+         
     }
 
 
+    private static function update($data)
+    {
+        if(!isset($data["id"]))
+        {
+            header("HTTP/1.1 444 No ID");
+            return "noid";
+        }
+
+        $name = "name";
+        $address = "address";
+
+        $params = array();
+        if (isset($data["name"]))
+        {
+            $name = "?";
+            array_push($params, $data["name"]);
+        }
+        if (isset($data["address"]))
+        {
+            $address = "?";
+            array_push($params,$data["address"]);
+        } 
+        
+        array_push($params,$data["id"]);
+        return DatabaseConnection::execute_statement("update Property set name = ".$name.",  address = ".$address." where id = ?",$params,true);
+        
+    }
+
+    private static function delete($data)
+    {
+        return  DatabaseConnection::execute_statement("delete from Property where id = ?",[$data["id"]],true);
+    }
 
    
 
@@ -40,15 +71,15 @@ class PropertyController implements IController
 
 
 
-    protected function sendOutput($data, $httpHeaders=array())
-    {
-        header_remove('Set-Cookie');
-        if (is_array($httpHeaders) && count($httpHeaders)) {
-            foreach ($httpHeaders as $httpHeader) {
-                header($httpHeader);
-            }
-        }
-        echo $data;
-        exit;
-    }
+    // protected function sendOutput($data, $httpHeaders=array())
+    // {
+    //     header_remove('Set-Cookie');
+    //     if (is_array($httpHeaders) && count($httpHeaders)) {
+    //         foreach ($httpHeaders as $httpHeader) {
+    //             header($httpHeader);
+    //         }
+    //     }
+    //     echo $data;
+    //     exit;
+    // }
 }

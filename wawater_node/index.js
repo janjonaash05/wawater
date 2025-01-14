@@ -3,6 +3,7 @@ const mysql = require("mysql2");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
+import {default as ExcelUtility} from './excelUtility.js';
 //
 //
 // import express from 'express';
@@ -40,15 +41,20 @@ const conn =  mysql.createPool({
 // });
 
 
-const mymail = "j69420j995@gmail.com";
+const mymail = "ddcorp@seznam.cz";
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    secure: false,
+    host: 'smtp.seznam.cz',
+    secure: true,
+    port: 587,
     auth: {
         user: mymail,
-        pass: 'lowkey455@'
-    }
+        pass: 'abc12345'
+    },
+    tls: {
+        // do not fail on invalid certs
+        rejectUnauthorized: false
+    },
 });
 
 
@@ -57,40 +63,26 @@ const PORT = 9009;
 
 const saltRounds = 10;
 
-app.get('/firm/deez',authenticateAdmin, (req, res) => {
+app.get('/firm/deez', (req, res) => {
 
-    conn.query("select id from Firm where name = ? and not exists (select 1 from Client where is_admin = true and firm_id = id)", ["jjc"], (err, result) => {
-        if(err)
-        {
-            res.status(500).json({msg: err});
-            return;
-        }
-        if (result.length === 0) {
-            res.status(400).json({msg: "Firm does not exists or already has assigned admin"});
-            return;
-        }
-        // let mailOptions = {
-        //     from: mymail,
-        //     to: mymail,
-        //     subject: 'Registration at ' + "firm_name",
-        //     text: 'Username: ' + "client_username" + " password: " + "password"
-        // };
-        //
-        // console.log(JSON.stringify(mailOptions));
-        // transporter.sendMail(mailOptions, function (error, info) {
-        //     if (error) {
-        //         console.log(error);
-        //     } else {
-        //         res.status(200).json({msg: info});
-        //     }
-        // });
-        res.status(200).json(result);
+
+        let mailOptions = {
+            from: mymail,
+            to: mymail,
+            subject: 'Registration at ' + "firm_name",
+            text: 'Username: ' + "client_username" + " password: " + "password"
+        };
+
+
+        transporter.sendMail(mailOptions, function (error, info) {
+            if (error) {
+                res.status(500).json({msg: error});
+            } else {
+                res.status(200).json({msg: "info"});
+            }
+        });
 
         //next();
-
-    });
-
-
 })
 
 

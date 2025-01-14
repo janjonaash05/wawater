@@ -2,7 +2,7 @@
 class ClientController implements IController
 {
 
-    public function specific_request($request, $data)
+    public function specific_request($request, $data, $username)
     {
         
     }
@@ -10,8 +10,9 @@ class ClientController implements IController
 
     public  static function validate_client($username,$password)
     {
-        $hash =  DatabaseConnection::execute_statement("select password from Client where username = ?",[$username]);
-        return password_verify($password, $hash);  
+        $row =  DatabaseConnection::execute_statement_single_row("select password from Client where username = ?",[$username]);
+        $hash = $row["password"];
+         return password_verify($password, $hash);  
     }
 
 }
