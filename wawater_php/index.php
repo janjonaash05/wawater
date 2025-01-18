@@ -59,7 +59,7 @@ if (!isset($_SERVER['PHP_AUTH_USER'])) {
 $resource_controller_map = array
 (
     "property" => new PropertyController(),
-    "gauge" => new gaugeController()
+    "gauge" => new GaugeController()
 ); 
 
 // header("Content-Type: application/json",false,200);

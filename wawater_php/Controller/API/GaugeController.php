@@ -1,7 +1,7 @@
 <?php
 use Hidehalo\Nanoid\Client;
 use Hidehalo\Nanoid\GeneratorInterface;
-class gaugeController implements IController
+class GaugeController implements IController
 {
     public function specific_request($request, $data,  $username)
     {
@@ -18,11 +18,20 @@ class gaugeController implements IController
        
         $name = $data["property_name"];
         $property_id = DatabaseConnection::execute_statement_single_row("select id from Property where name = ? and client_id = ? ",[$name, $client_id])["id"];
-        return  DatabaseConnection::execute_statement("select * from gauge where property_id = ?", [$property_id]);
+        return  DatabaseConnection::execute_statement("select * from Gauge where property_id = ?", [$property_id]);
     }
  
+
     public static function register($data)
     {
+
+        if(!isset($data["serial_number"],$data["property_name"],$data["property_name"],$data["gauge_type"],$data["location_sign"]))
+        {
+            header("400 Invalid parameters");
+            return "invalid";
+        }
+
+
         $client = new Client();
         $guid = $client->formattedId($alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', $size = 8);
         $serial_number = $data["serial_number"];
@@ -30,10 +39,10 @@ class gaugeController implements IController
         $property_name =  $data["property_name"];
         $property_id = DatabaseConnection::execute_statement_single_row("Select id from Property where name = ?",[$property_name])["id"];
         $gauge_type_short_name = $data["gauge_type"];
-        $gauge_type_id =   DatabaseConnection::execute_statement_single_row("Select id from gaugeType where short_name = ?",[$gauge_type_short_name])["id"];
+        $gauge_type_id =   DatabaseConnection::execute_statement_single_row("Select id from GaugeType where short_name = ?",[$gauge_type_short_name])["id"];
         $location_sign = $data["location_sign"];
         
-        DatabaseConnection::execute_statement("insert into gauge(guid,serial_number,value,property_id,gauge_type_id,location_sign) values (?,?,?,?,?,?)",
+        DatabaseConnection::execute_statement("insert into Gauge(guid,serial_number,value,property_id,gauge_type_id,location_sign) values (?,?,?,?,?,?)",
         [$guid, $serial_number,$value,$property_id,$gauge_type_id,$location_sign], true);
         return ["guid" => $guid]; 
     }

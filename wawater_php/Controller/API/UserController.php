@@ -14,4 +14,7 @@ class UserController implements IController
         return password_verify($password, $hash);  
     }
 
+
+    
+
 }

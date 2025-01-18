@@ -26,7 +26,7 @@ class PropertyController implements IController
     {
         $name = $data["name"];
         $address = $data["address"];
-
+        
         $client_id = DatabaseConnection::execute_statement_single_row("select id from Client where username = ?",[$username])["id"];
         return DatabaseConnection::execute_statement("insert into Property(name,address,client_id) values (?,?,?)",[$name, $address, $client_id],true);
          
