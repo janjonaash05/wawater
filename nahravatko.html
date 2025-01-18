@@ -270,10 +270,10 @@
         function handleFiles(files) {
             if (files.length > 0) {
                 const file = files[0];
-                if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                if (file.name.endsWith('.xlsx')) {
                     fileInfo.textContent = `Vybraný soubor: ${file.name}`;
                 } else {
-                    fileInfo.textContent = 'Prosím vyberte CSV soubor';
+                    fileInfo.textContent = 'Prosím vyberte xlsx soubor';
                     fileInput.value = '';
                 }
             }

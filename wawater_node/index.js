@@ -2,8 +2,8 @@ const express = require("express");
 const mysql = require("mysql2");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
-
 import {default as ExcelUtility} from './excelUtility.js';
+require("multer");
 //
 //
 // import express from 'express';
@@ -16,6 +16,7 @@ const app = express();
 //app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
+app.use(express.application);
 
 const conn =  mysql.createPool({
     host: "127.0.0.1",
@@ -27,6 +28,14 @@ const conn =  mysql.createPool({
     queueLimit: 0,
     port: 3306
 });
+
+var storage = multer.memoryStorage();
+var upload = multer({ storage: storage });
+
+
+
+
+
 
 
 
@@ -146,6 +155,7 @@ app.put("/firm/client", authenticateAdmin, (req, res) => {
         query += " password = ? and";
     }
     query = query.slice(0, query.length - 3);
+    query += " where id = ?"
 
     let errCallback = (err) => {
         res.status(500).json({msg: err});
@@ -196,7 +206,37 @@ app.delete("/firm/client", authenticateAdmin, (req, res) => {
 
 });
 
-app.get("/client/validate")
+
+
+app.post('/firm/decrease-gagues/excel',authenticateAdmin,upload.single('excel'), (req, res) => {
+
+    req.file.buffer.
+    ExcelUtility.readMeterData()
+
+    let mailOptions = {
+        from: mymail,
+        to: mymail,
+        subject: 'Registration at ' + "firm_name",
+        text: 'Username: ' + "client_username" + " password: " + "password"
+    };
+
+
+    transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+            res.status(500).json({msg: error});
+        } else {
+            res.status(200).json({msg: "info"});
+        }
+    });
+
+    //next();
+})
+
+
+app.get("/firm/get-overview")
+
+
+
 
 
 function generateAPassword(errorCallback, callback) {
@@ -240,7 +280,7 @@ function extractUsernamePasswordFromRequest(errCallback, req) {
 
 }
 
-// bagr:6kw37n
+// bagr:wbeu1o
 function authenticateClient(req, res, next) {
     let errCallback = () => {
         res.status(401).send("Unathorized")
@@ -273,7 +313,7 @@ function authenticateClient(req, res, next) {
     next()
 }
 
-// admin:msrpvc pro jjc
+// admin:zu7osu pro ddcorp
 function authenticateAdmin(req, res, next) {
 
     let errCallback = () => {

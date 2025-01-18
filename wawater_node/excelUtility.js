@@ -4,96 +4,143 @@ const nodemailer = require('nodemailer');
 
 class ExcelUtility {
     /**
-     * 
-     * @param {string} filePath - cesta k excel souboru
-     * @returns {Object} 
+     * @param {string} filePath
+     * @returns {Object} zpracovava data meridel
      */
-    static readConsumptionData(filePath) {
+    static readMeterData(filePath) {
         try {
             const workbook = XLSX.readFile(filePath);
-            const sheet = workbook.Sheets["Měsíční spotřeby"];
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
             
-            const year = sheet['A1']?.v;
-            
-            // convert to json 
-            const data = XLSX.utils.sheet_to_json(sheet, {
-                header: 1,
-                range: 1 // skipnuti header radku
-            });
+            // tohle bere info o klientovy z headeru
+            const clientInfo = {
+                date: sheet['A2']?.v,
+                client: sheet['B2']?.v,
+                property_name: sheet['C2']?.v
+            };
 
-            const monthlyData = data.map(row => ({
-                teplo: row[1] || 0,      // Column B
-                studena: row[2] || 0,     // Column C atd.
-                tepla: row[3] || 0        
-            }));
+
+            const gaugeDataRaw = XLSX.utils.sheet_to_json(sheet, {
+                header: 1 //convert to 2D array
+            }).filter(row => row.location && row.type); // Odstranění prázdných řádků
+
+            let meterData = [];
+            for (let i = 3; i < gaugeDataRaw.length; i++ )
+            {
+                meterData.push(
+                    {
+                      guid:  gaugeDataRaw[i][0],
+                      value: gaugeDataRaw[i][1],
+                    });
+            }
+
+
 
             return {
-                year,
-                monthlyData
-            };
+               client_info: clientInfo,
+                gague_data: meterData
+                };
+            }
         } catch (error) {
-            console.error('Error reading Excel file:', error);
-            throw error;
+            console.error('Chyba při čtení Excel souboru:', error);
+            return error;
         }
     }
 
-    static createConsumptionReport(data, year) {
+    /**
+     * @param {Object} data - data odectu meridel
+     * @returns {Buffer} excel soubor jako buffer
+     */
+    static createMeterReport(data) {
         const workbook = XLSX.utils.book_new();
 
-        // headers
-        const headers = ['Měsíc', 'Teplo (GJ)', 'Studená voda (m³)', 'Teplá voda (m³)'];
-        const months = [
-            'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
-            'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'
+            // header data klienta
+        const headerData = [
+            ['Datum', 'Klient', 'Adresa', 'Název nemovitosti'],
+            [data.clientInfo.date, data.clientInfo.client, data.clientInfo.address, data.clientInfo.property],
+            [], 
+            ['Umístění', 'Typ', 'Výrobní číslo', 'Odečet']
         ];
 
-        // worksheet data
+        // pridavani odectu meridel
         const wsData = [
-            [year],
-            headers,
-            ...data.map((item, index) => [
-                months[index],
-                item.teplo,
-                item.studena,
-                item.tepla
+            ...headerData,
+            ...data.meterData.map(meter => [
+                meter.location,
+                meter.type,
+                meter.guid,
+                meter.decrease
             ])
         ];
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-        // basic formatovani
+        // basic formatovani - klidne uprav jak je libo
         ws['!cols'] = [
-            { wch: 15 }, // Month column width
-            { wch: 12 }, // Heat column width
-            { wch: 15 }, // Cold water column width
-            { wch: 15 }  // Hot water column width
+            { wch: 15 }, // umisteni
+            { wch: 12 }, // typ
+            { wch: 20 }, // UID
+            { wch: 12 }  // odecet
         ];
 
-        XLSX.utils.book_append_sheet(workbook, ws, "Měsíční spotřeby");
+        XLSX.utils.book_append_sheet(workbook, ws, "Odečty měřidel");
         return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     }
-
-    static async sendReportEmail(excelBuffer, email, year) {
+	// metoda na odesilani mailu
+    static async sendReportEmail(excelBuffer, email, reportInfo) {
         const transporter = nodemailer.createTransport({
-            host: 'smtp.example.com', // Replace with your SMTP server
+            host: 'smtp.seznam.cz',
             port: 587,
             secure: false,
             auth: {
-                user: 'your-email@example.com',
-                pass: 'your-password'
+                user: 'ddcorp@seznam.cz',
+                pass: process.env.EMAIL_PASSWORD // Mělo by být nastaveno v prostředí
             }
         });
 
+        const date = new Date().toLocaleDateString('cs-CZ');
+        
         await transporter.sendMail({
-            from: 'your-email@example.com',
+            from: 'ddcorp@seznam.cz',
             to: email,
-            subject: `Přehled spotřeby ${year}`,
-            text: `V příloze naleznete přehled spotřeby za rok ${year}.`,
+            subject: `Odečty měřidel - ${reportInfo.property} - ${date}`,
+            text: `V příloze naleznete přehled odečtů měřidel pro nemovitost ${reportInfo.property} ze dne ${date}.`,
             attachments: [{
-                filename: `spotreba_${year}.xlsx`,
+                filename: `odecty_${date.replace(/\./g, '_')}.xlsx`,
                 content: excelBuffer
             }]
         });
+    }
+
+    /**
+     * validace odectu
+     * @param {Array} meterData - array odectu meridel
+     * @param {Object} dbMeters - zaznamy meridel z db
+     */
+    static validateMeterReadings(meterData, dbMeters) {
+        const validationResults = {
+            valid: true,
+            errors: []
+        };
+
+        meterData.forEach(meter => {
+            const dbMeter = dbMeters.find(m => m.guid === meter.guid);
+            
+            if (!dbMeter) {
+                validationResults.valid = false;
+                validationResults.errors.push(`Neznámé měřidlo: ${meter.guid}`);
+                return;
+            }
+
+            if (dbMeter.location_sign !== meter.location) {
+                validationResults.valid = false;
+                validationResults.errors.push(
+                    `Nesouhlasí umístění měřidla ${meter.guid}: ${meter.location} vs. ${dbMeter.location_sign}`
+                );
+            }
+        });
+
+        return validationResults;
     }
 }
 

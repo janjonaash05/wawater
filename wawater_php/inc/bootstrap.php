@@ -8,9 +8,10 @@ require_once "config.php";
 
 
 require_once PROJECT_ROOT_PATH . "/DatabaseConnection.php";
+include_once PROJECT_ROOT_PATH . "/vendor/autoload.php";
 include_once PROJECT_ROOT_PATH . "/Controller/API/IController.php";
 include_once PROJECT_ROOT_PATH . "/Controller/API/PropertyController.php";
 include_once PROJECT_ROOT_PATH . "/Controller/API/ClientController.php";
-
+include_once PROJECT_ROOT_PATH . "/Controller/API/gaugeController.php";
 
 ?>

@@ -1,4 +1,5 @@
 <?php
+
 class PropertyController implements IController
 {
    
@@ -9,9 +10,10 @@ class PropertyController implements IController
         "get-all" => self::get_all($username),
         "register" => self::register($data,$username),
         "update" => self::update($data),
-        "delete" => self::delete($data)
+        "delete" => self::delete($data),
        };
     }
+
 
 
     private static function get_all($username)
@@ -36,13 +38,13 @@ class PropertyController implements IController
         if(!isset($data["id"]))
         {
             header("HTTP/1.1 444 No ID");
-            return "noid";
+            return "no id";
         }
 
         $name = "name";
         $address = "address";
 
-        $params = array();
+        $params = [];
         if (isset($data["name"]))
         {
             $name = "?";

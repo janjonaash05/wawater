@@ -40,7 +40,7 @@ $username = "";
 if (!isset($_SERVER['PHP_AUTH_USER'])) {
     header('WWW-Authenticate: Basic realm="My Realm"');
     header('HTTP/1.0 401 Unauthorized');
-
+    echo "UNAUTHORIZED";
     exit;
 } else {
     $username = $_SERVER['PHP_AUTH_USER'];
@@ -58,12 +58,13 @@ if (!isset($_SERVER['PHP_AUTH_USER'])) {
 
 $resource_controller_map = array
 (
-    "property" => new PropertyController()
+    "property" => new PropertyController(),
+    "gauge" => new gaugeController()
 ); 
 
 // header("Content-Type: application/json",false,200);
 header('HTTP/1.0 200 OK');
-echo json_encode($resource_controller_map[$resource]->specific_request($specific_request,$data,$username ),JSON_FORCE_OBJECT); 
+echo json_encode($resource_controller_map[$resource]->specific_request($specific_request,$data,$username )); 
 //echo json_encode("cau");
 
 //($resource_controller_map[$resource]); //.call_specific($specific_request,"h");
