@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const ExcelUtility = require('./excelUtility.js');
 const multer = require("multer");
+const trace_events = require("node:trace_events");
 //
 //
 // import express from 'express';
@@ -190,13 +191,22 @@ app.delete("/firm/client", authenticateAdmin, (req, res) => {
 });
 
 
-app.post('/firm/decrease-gauges/excel', upload.single("excel"), (req, res) => {
+app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res) => {
 
 
     try {
         // res.json(Object.getOwnPropertyNames(req.file.buffer));
         let ob = ExcelUtility.readMeterData(Buffer.from(req.file.buffer));
         const {client_info, gauge_data} = ob;
+
+
+        for (let gauge_line of gauge_data)
+        {
+            let max_registered =  await isGaugeRegistered(gauge_line.guid,"GaugeMaxExceeded").catch(()=>{});
+            let month_avg_registered =  await isGaugeRegistered(gauge_line.guid,"GaugeMaxExceeded").catch(()=>{});
+            
+        }
+
 
         // conn.query("Select password from User where username = ?", [username, password], (err, results_user) => {
         //     if (results_user.length === 0) {
@@ -220,6 +230,19 @@ app.post('/firm/decrease-gauges/excel', upload.single("excel"), (req, res) => {
         res.status(500).json({msg: err});
     }
 })
+
+function isGaugeRegistered(gauge_guid, trigger_table)
+{
+    return new Promise((resolve,reject) =>
+    {
+        conn.query("select 1 from ? where gauge_id = ?", [trigger_table, gauge_guid], (err,res) =>
+        {
+            resolve(!!res);
+
+        })
+
+    }) ;
+}
 
 
 app.post("/client/gauge-trigger/max-exceeded", authenticateClient,async (req, res) => {
