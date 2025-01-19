@@ -83,6 +83,7 @@ app.post('/firm/client', authenticateAdmin, (req, res) => {
 
 
     const {firm_id, firm_name, client_username, client_email} = req.body;
+    if(!client_username || !client_email) return res.status(400).json("Not enough info supplied");
 
     const {assign_admin} = req.body;
 
@@ -188,6 +189,18 @@ app.put("/firm/client", authenticateAdmin, (req, res) => {
 
 app.delete("/firm/client", authenticateAdmin, (req, res) => {
 
+    let firm_id = req.body.firm_id;
+    let client_username = req.body.client_username;
+
+    conn.query("delete from Client where username = ? and firm_id = ?",[firm_id, client_username], (err, result_client) =>
+    {
+
+        if(err)
+        {
+            return res.status(500).json({msg: err});
+        }
+        res.status(200).json({msg: "success"});
+    })
 });
 
 
@@ -200,11 +213,35 @@ app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res)
         const {client_info, gauge_data} = ob;
 
 
-        for (let gauge_line of gauge_data)
-        {
-            let max_registered =  await isGaugeRegistered(gauge_line.guid,"GaugeMaxExceeded").catch(()=>{});
-            let month_avg_registered =  await isGaugeRegistered(gauge_line.guid,"GaugeMaxExceeded").catch(()=>{});
-            
+        for (let gauge_line of gauge_data) {
+            let gauge_id = await getGaugeIdForGuid(gauge_line.guid);
+
+
+            let belongsToFirm = await gaugeBelongsToFirm(gauge_id, req.body.firm_id).catch(() => {
+            });
+            if (!!belongsToFirm) return res.status(400).json({msg: gauge_line.guid + " does not belong"})
+
+            let max_registered = await isGaugeRegistered(gauge_id, "GaugeMaxExceeded").catch(() => {
+            });
+            let month_avg_registered = await isGaugeRegistered(gauge_id, "GaugeMaxExceeded").catch(() => {
+            });
+
+            await new Promise((resolve, reject) => {
+                conn.query("Insert into GaugeDecrease(decrease_date,gauge_id,value) values (?,?,?)", [client_info.date, gauge_id, gauge_line.value], (err, res) => {
+                    if (err) reject(err)
+                })
+            }).catch(err => res.status(500).json(err));
+
+            if (max_registered) {
+                let exceeded = await gaugeMaxExceededDuringMonthCheck(gauge_id,).catch(() => {
+                });
+            }
+
+            if (month_avg_registered) {
+                let exceeded = await gaugeMonthAverageExceededCheck().catch(() => {
+                });
+            }
+
         }
 
 
@@ -231,27 +268,48 @@ app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res)
     }
 })
 
-function isGaugeRegistered(gauge_guid, trigger_table)
-{
-    return new Promise((resolve,reject) =>
-    {
-        conn.query("select 1 from ? where gauge_id = ?", [trigger_table, gauge_guid], (err,res) =>
-        {
+function isGaugeRegistered(gauge_id, trigger_table) {
+    return new Promise((resolve, reject) => {
+        conn.query("select 1 from ? where gauge_id = ?", [trigger_table, gauge_id], (err, res) => {
             resolve(!!res);
-
         })
+    });
+}
 
-    }) ;
+function gaugeBelongsToFirm(gauge_id, property_name, firm_id, username) {
+    return new Promise((resolve, reject) => {
+        conn.query("call GaugeBelongsToFirmCheck(?,?,?,?, @belongs)", [gauge_id,property_name, firm_id, username], (err, res) => {
+            resolve(!!res);
+        })
+    });
+}
+
+function gaugeMonthAverageExceededCheck(gauge_id, month, year) {
+    return new Promise((resolve, reject) => {
+        conn.query("call GaugeMonthAverageExceededCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
+            resolve(!!res);
+        })
+    });
+}
+
+function gaugeMaxExceededDuringMonthCheck(gauge_id, month, year) {
+    return new Promise((resolve, reject) => {
+        conn.query("call GaugeMonthAverageExceededCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
+            resolve(!!res);
+        })
+    });
 }
 
 
-app.post("/client/gauge-trigger/max-exceeded", authenticateClient,async (req, res) => {
+app.post("/client/gauge-trigger/max-exceeded", authenticateClient, async (req, res) => {
     const {client_id, gauge_guid, max_value} = req.body;
-    if(!gauge_guid) return res.status(400).json({msg: "no guid"});
+    if (!gauge_guid) return res.status(400).json({msg: "no guid"});
 
 
     let gauge_id = await getGaugeIdForGuid(gauge_guid);
-    if(!gauge_id) {return res.status(400).json("invalid gauge guid");}
+    if (!gauge_id) {
+        return res.status(400).json("invalid gauge guid");
+    }
 
 
     conn.query("Insert into GaugeMaxExceeded(client_id, gauge_id, max_value) values (?,?,?)", [client_id, gauge_id, max_value], (err, result) => {
@@ -265,14 +323,16 @@ app.post("/client/gauge-trigger/max-exceeded", authenticateClient,async (req, re
 })
 
 
-app.post("/client/gauge-trigger/month-avg-exceeded", authenticateClient,async (req, res) => {
+app.post("/client/gauge-trigger/month-avg-exceeded", authenticateClient, async (req, res) => {
     const {client_id, gauge_guid, month} = req.body;
 
-    if(!gauge_guid) return res.status(400).json({msg: "no guid"});
+    if (!gauge_guid) return res.status(400).json({msg: "no guid"});
 
 
     let gauge_id = await getGaugeIdForGuid(gauge_guid);
-    if(!gauge_id) {return res.status(400).json("invalid gauge guid");}
+    if (!gauge_id) {
+        return res.status(400).json("invalid gauge guid");
+    }
 
 
     conn.query("Insert into GaugeMonthAverageExceeded(client_id, gauge_id, month) values (?,?,?)", [client_id, gauge_id, month], (err, result) => {
@@ -284,7 +344,7 @@ app.post("/client/gauge-trigger/month-avg-exceeded", authenticateClient,async (r
     })
 })
 
-app.post("/client/gauge-trigger/month-overview", authenticateClient,async (req, res) => {
+app.post("/client/gauge-trigger/month-overview", authenticateClient, async (req, res) => {
     const {client_id} = req.body;
 
     conn.query("Insert into GaugeMonthOverview(client_id) values (?,?,?)", [client_id], (err, result) => {
@@ -295,8 +355,6 @@ app.post("/client/gauge-trigger/month-overview", authenticateClient,async (req, 
         res.status(200).json({msg: "ok"});
     })
 })
-
-
 
 
 function getGaugeIdForGuid(guid) {
@@ -313,31 +371,6 @@ function getGaugeIdForGuid(guid) {
     });
 
 }
-
-function checkNotTriggerRegistered(trigger_table,client_id, gauge_id = null)
-{
-
-    return new Promise((resolve, reject) => {
-        let query = "select 1 from ? client_id = ? ";
-        let params = [trigger_table, client_id];
-        if(gauge_id)
-        {
-            query += "and gauge_id = ?";
-            params.push(gauge_id);
-        }
-
-        conn.query(query, params, (err, res) => {
-            if (err || !res) {
-                reject(err);
-                return;
-            }
-
-            return res.length !== 0;
-
-        })
-    });
-}
-
 
 function generateAPassword(errorCallback, callback) {
     let password = Math.random().toString(36).slice(2, 8);
@@ -391,7 +424,7 @@ function authenticateClient(req, res, next) {
 
 
     conn.query("Select id,password from Client where username = ?", [username], (err, results_user) => {
-        if(err) return res.status(401).send("Unathorized");
+        if (err) return res.status(401).send("Unathorized");
 
         if (results_user.length === 0) {
             return res.status(400).json({msg: "User does not exist"});
@@ -411,7 +444,6 @@ function authenticateClient(req, res, next) {
         });
 
     })
-
 
 
 }
