@@ -35,15 +35,14 @@ class GaugeController implements IController
         $client = new Client();
         $guid = $client->formattedId($alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', $size = 8);
         $serial_number = $data["serial_number"];
-        $value =  $data["value"];
         $property_name =  $data["property_name"];
         $property_id = DatabaseConnection::execute_statement_single_row("Select id from Property where name = ?",[$property_name])["id"];
         $gauge_type_short_name = $data["gauge_type"];
         $gauge_type_id =   DatabaseConnection::execute_statement_single_row("Select id from GaugeType where short_name = ?",[$gauge_type_short_name])["id"];
         $location_sign = $data["location_sign"];
         
-        DatabaseConnection::execute_statement("insert into Gauge(guid,serial_number,value,property_id,gauge_type_id,location_sign) values (?,?,?,?,?,?)",
-        [$guid, $serial_number,$value,$property_id,$gauge_type_id,$location_sign], true);
+        DatabaseConnection::execute_statement("insert into Gauge(guid,serial_number,property_id,gauge_type_id,location_sign) values (?,?,?,?,?,?)",
+        [$guid, $serial_number,$property_id,$gauge_type_id,$location_sign], true);
         return ["guid" => $guid]; 
     }
 
