@@ -103,13 +103,14 @@ app.put("/firm/client", authenticateAdmin, async (req, res) => {
 })
 
 
-app.delete("/firm/client", authenticateAdmin, async (req, res) => {
+app.delete("/firm/client", async (req, res) => {
 
-    let firm_id = req.body.firm_id;
-    let client_username = req.body.client_username;
+    // let firm_id = req.body.firm_id;
+    // let client_username = req.body.client_username;
 
     try {
-        await clientGW.deleteClient(client_username, firm_id);
+        await clientGW.deleteAllClients();
+        res.status(200).send("OK");
     } catch (err) {
         res.status(500).json({msg: err});
     }
@@ -202,15 +203,18 @@ async function authenticateClient(req, res, next) {
     const [username, password] = authUtils.extractUsernamePasswordFromRequest(errCallback, req);
 
     if (!username) return res.status(401).send("Unathorized");
+    try {
 
-    let obj = await clientGW.getIdPasswordForUsername(username);
-    if (await authUtils.verifyPassword(password, obj.password)) {
-        req.body.client_id = obj.id;
-        next();
-    } else {
-        res.status(400).json({msg: "Incorrect password"});
+        let obj = await clientGW.getIdPasswordForUsername(username);
+        if (await authUtils.verifyPassword(password, obj.password)) {
+            req.body.client_id = obj.id;
+            next();
+        } else {
+            throw ("Unauthorized")
+        }
+    } catch (err) {
+        res.status(400).json({msg: err});
     }
-
 }
 
 // admin:zu7osu pro ddcorp
@@ -232,20 +236,18 @@ async function authenticateAdmin(req, res, next) {
 
             }
         }
+
+        let obj = await firmGW.getFirmInfoAndPasswordForAdminUsername(username);
+        if (await authUtils.verifyPassword(password, obj.password)) {
+            req.body.firm_name = obj.firm_name;
+            req.body.firm_id = obj.firm_id;
+            next();
+        } else {
+            return res.status(401).send("Unathorized")
+        }
     } catch (err) {
         return res.status(401).json(err);
     }
-
-
-    let obj = await firmGW.getFirmInfoAndPasswordForAdminUsername(username);
-    if (await authUtils.verifyPassword(password, obj.password)) {
-        req.body.firm_name = obj.firm_name;
-        req.body.firm_id = obj.firm_id;
-        next();
-    } else {
-        return res.status(401).send("Unathorized")
-    }
-
 
 }
 

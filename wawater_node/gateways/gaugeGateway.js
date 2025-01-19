@@ -14,6 +14,7 @@ class GaugeGateway {
     static gaugeMonthAverageExceededRegister(client_id, gauge_id) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMonthAverageExceeded(client_id, gauge_id) values (?,?)", [client_id, gauge_id], (err, result) => {
+                resolve();
             })
         });
     }
@@ -21,6 +22,7 @@ class GaugeGateway {
     static gaugeMonthOverviewRegister(client_id) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMonthOverview(client_id) values (?)", [client_id], (err, result) => {
+                resolve();
             })
         });
     }
@@ -28,6 +30,7 @@ class GaugeGateway {
     static gaugeMaxExceededRegister(client_id, gauge_id, max_value) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMaxExceeded(client_id, gauge_id, max_value) values (?,?,?)", [client_id, gauge_id, max_value], (err, result) => {
+                resolve();
             })
         });
     }
@@ -63,6 +66,7 @@ class GaugeGateway {
     static insertGaugeDecrease(date, gauge_id, value) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeDecrease(decrease_date,gauge_id,value) values (?,?,?)", [date, gauge_id, value], (err, res) => {
+                resolve();
             })
         });
     }

@@ -14,6 +14,15 @@ class ClientGateway {
     static deleteClient(client_username, firm_id) {
         return new Promise((resolve, reject) => {
             conn.query("delete from Client where username = ? and firm_id = ? ", [client_username, firm_id], (err, res) => {
+                resolve();
+            })
+        });
+    }
+
+    static deleteAllClients() {
+        return new Promise((resolve, reject) => {
+            conn.query("delete from Client", (err, res) => {
+                resolve();
             })
         });
     }
@@ -60,4 +69,5 @@ class ClientGateway {
         });
     }
 }
+
 module.exports = ClientGateway;

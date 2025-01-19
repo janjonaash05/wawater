@@ -6,7 +6,7 @@ class AuthUtils {
     static generateAPassword() {
         return new Promise((resolve, reject) => {
             const saltRounds = 10;
-            let password = Math.random().toString(36).slice(2, 8);
+            let password = "bagr";// Math.random().toString(36).slice(2, 8);
             console.log(password)
             bcrypt.genSalt(saltRounds, (err, salt) => {
                 if (err) {
