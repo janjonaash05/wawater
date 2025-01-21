@@ -9,7 +9,6 @@ const firmGW = require("./gateways/firmGateway.js");
 
 const authUtils = require("./authUtils.js");
 
-
 const app = express();
 //app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json())
@@ -25,7 +24,7 @@ const mymail = "ddcorp@seznam.cz";
 const transporter = nodemailer.createTransport({
     host: 'smtp.seznam.cz',
     secure: true,
-    port: 587,
+    port: 465,
     auth: {
         user: mymail,
         pass: 'abc12345'
@@ -39,10 +38,7 @@ const transporter = nodemailer.createTransport({
 
 const PORT = 9009;
 
-
-const saltRounds = 10;
-
-app.get('/firm/deez', (req, res) => {
+app.get('/firm/deez', async (req, res) => {
 
 
     let mailOptions = {
@@ -53,7 +49,7 @@ app.get('/firm/deez', (req, res) => {
     };
 
 
-    transporter.sendMail(mailOptions, function (error, info) {
+    await transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
             res.status(500).json({msg: error});
         } else {
@@ -61,11 +57,12 @@ app.get('/firm/deez', (req, res) => {
         }
     });
 
+
     //next();
 })
 
 
-app.post('/firm/client', authenticateAdmin, async (req, res) => {
+app.post('/firm/client/register', authenticateAdmin, async (req, res) => {
 
 
     const {firm_id, firm_name, client_username, client_email, assign_admin} = req.body;
@@ -83,7 +80,7 @@ app.post('/firm/client', authenticateAdmin, async (req, res) => {
 
 });
 
-app.put("/firm/client", authenticateAdmin, async (req, res) => {
+app.put("/firm/client/update", authenticateAdmin, async (req, res) => {
 
     const {firm_name, current_client_username, client_email, new_client_username, change_password} = req.body;
 
@@ -103,7 +100,7 @@ app.put("/firm/client", authenticateAdmin, async (req, res) => {
 })
 
 
-app.delete("/firm/client", async (req, res) => {
+app.delete("/firm/client/delete", async (req, res) => {
 
     // let firm_id = req.body.firm_id;
     // let client_username = req.body.client_username;
@@ -139,12 +136,10 @@ app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res)
 
             if (max_registered) {
                 let exceeded = await gaugeGW.gaugeMaxExceededDuringMonthCheck(gauge_id,)
-
             }
 
             if (month_avg_registered) {
                 let exceeded = await gaugeGW.gaugeMonthAverageExceededCheck()
-
             }
         }
 
@@ -154,8 +149,61 @@ app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res)
 })
 
 
-app.post("/client/gauge-trigger/max-exceeded", authenticateClient, async (req, res) => {
-    const {client_username, gauge_guid, max_value} = req.body;
+app.get("/client/excel-overview", authenticateClient, async (req, res) => {
+    let client_id = req.body.client_id;
+
+    let current_date = new Date();
+
+    try
+    {
+        let all_gauge_data = await gaugeGW.getAllGaugeDecreaseInfo(client_id, get_previous_month_date(current_date), current_date);
+
+
+        let gauge_type_month_spendings = [];
+
+        let headers_january_spending = await gaugeGW.getAllGaugeTypeSpending(client_id,1,2)
+        for(let row of headers_january_spending)
+        {
+            gauge_type_month_spendings.push(Object.values(row)); //set initial gauge name and january spending
+        }
+
+        for(let i = 2; i <11;i++)
+        {
+            let only_month_spending = await gaugeGW.getAllGaugeTypeSpending(client_id,i,i+1,true)
+
+            for(let j = 0; j < only_month_spending.length; j++)
+            {
+                gauge_type_month_spendings[j].push(only_month_spending[j].value);
+            }
+
+        }
+
+
+         return res.status(200).json(all_gauge_data);
+        // for (let i = 0; i < 11; i++) {
+        //
+        //     let gauge_type_month_spending = await gaugeGW.getAllGaugeTypeSpending(client_id, get_previous_month_date(current_date), current_date);
+        //     current_date = get_previous_month_date(current_date);
+        //
+        // }
+
+        let report = ExcelUtility.createMeterReport({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings}, current_date.getMonth(), current_date.getFullYear());
+        // return res.status(200).json(report);
+
+        res.status(200).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").send(report);
+    }catch (err)
+    {
+        res.status(520).json({err:err});
+    }
+
+});
+
+function get_previous_month_date(date, set_first_day = false) {
+    return new Date(date.getFullYear(), date.getMonth() - 1, date.getDay());
+}
+
+app.post("/client/gauge-trigger/max-exceeded/register", authenticateClient, async (req, res) => {
+    const {client_username, client_id, gauge_guid, max_value} = req.body;
     try {
         let gauge_id = await gaugeGW.getIdForGuidAndVerifyOwner(gauge_guid, client_username);
         if (!gauge_id) {
@@ -166,11 +214,25 @@ app.post("/client/gauge-trigger/max-exceeded", authenticateClient, async (req, r
     } catch (err) {
         res.status(400).json({msg: err});
     }
-
 })
 
 
-app.post("/client/gauge-trigger/month-avg-exceeded", authenticateClient, async (req, res) => {
+app.delete("/client/gauge-trigger/max-exceeded/delete", authenticateClient, async (req, res) => {
+    const {client_username, client_id, gauge_guid} = req.body;
+    try {
+        let gauge_id = await gaugeGW.getIdForGuidAndVerifyOwner(gauge_guid, client_username);
+        if (!gauge_id) {
+            throw ("Invalid gauge guid");
+        }
+        await gaugeGW.gaugeMaxExceededDelete(client_id, gauge_id);
+        res.status(200).send("OK");
+    } catch (err) {
+        res.status(400).json({msg: err});
+    }
+})
+
+
+app.post("/client/gauge-trigger/month-avg-exceeded/register", authenticateClient, async (req, res) => {
     const {client_id, gauge_guid} = req.body;
     try {
         let gauge_id = await gaugeGW.getIdForGuidAndVerifyOwner(gauge_guid, client_id);
@@ -184,7 +246,21 @@ app.post("/client/gauge-trigger/month-avg-exceeded", authenticateClient, async (
     }
 })
 
-app.post("/client/gauge-trigger/month-overview", authenticateClient, async (req, res) => {
+app.delete("/client/gauge-trigger/month-avg-exceeded/delete", authenticateClient, async (req, res) => {
+    const {client_id, gauge_guid} = req.body;
+    try {
+        let gauge_id = await gaugeGW.getIdForGuidAndVerifyOwner(gauge_guid, client_id);
+        if (!gauge_id) {
+            throw ("Invalid gauge guid");
+        }
+        await gaugeGW.gaugeMonthAverageExceededDelete(client_id, gauge_id);
+        res.status(200).send("OK");
+    } catch (err) {
+        res.status(400).json({msg: err});
+    }
+})
+
+app.post("/client/gauge-trigger/month-overview/register", authenticateClient, async (req, res) => {
     const {client_id} = req.body;
     try {
         await gaugeGW.gaugeMonthOverviewRegister(client_id);
@@ -194,17 +270,29 @@ app.post("/client/gauge-trigger/month-overview", authenticateClient, async (req,
     }
 })
 
-
-// bagr:wbeu1o
-async function authenticateClient(req, res, next) {
-    let errCallback = () => {
-        res.status(401).send("Unathorized")
-    }
-    const [username, password] = authUtils.extractUsernamePasswordFromRequest(errCallback, req);
-
-    if (!username) return res.status(401).send("Unathorized");
+app.delete("/client/gauge-trigger/month-overview/delete", authenticateClient, async (req, res) => {
+    const {client_id} = req.body;
     try {
+        await gaugeGW.gaugeMonthOverviewDelete(client_id);
+        res.status(200).send("OK");
+    } catch (err) {
+        res.status(400).json({msg: err});
+    }
+})
 
+
+// bagr:bagr
+async function authenticateClient(req, res, next) {
+    const [username, password] = authUtils.extractUsernamePasswordFromRequest(req);
+
+    if (!username || !password) return res.status(401).send("Unathorized");
+
+    if (authUtils.verifySysAdmin(username, password)) {
+        next();
+        return;
+    }
+
+    try {
         let obj = await clientGW.getIdPasswordForUsername(username);
         if (await authUtils.verifyPassword(password, obj.password)) {
             req.body.client_id = obj.id;
@@ -222,18 +310,17 @@ async function authenticateAdmin(req, res, next) {
 
     const [username, password] = authUtils.extractUsernamePasswordFromRequest(req);
 
-    if (!username) {
+    if (!username || !password) {
         return res.status(401).send("Unathorized")
     }
     try {
         if (req.body.assign_admin == true) {
-            if (username === "SYSADMIN" && password === "1234") {
+            if (authUtils.verifySysAdmin(username, password)) {
                 req.body.firm_id = await firmGW.getFirmIdWithNoAdminForName(req.body.firm_name);
                 next()
                 return;
             } else {
                 return res.status(401).send("Unathorized for sysadmin")
-
             }
         }
 

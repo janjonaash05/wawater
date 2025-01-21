@@ -50,43 +50,43 @@ class ExcelUtility {
         }
     }
 
-    /**
-     * @param {Object} data - data odectu meridel
-     * @returns {Buffer} excel soubor jako buffer
-     */
-    static createMeterReport(data) {
-        const workbook = XLSX.utils.book_new();
 
-        // header data klienta
-        const headerData = [
-            ['Datum', 'Klient', 'Adresa', 'Název nemovitosti'],
-            [data.clientInfo.date, data.clientInfo.client, data.clientInfo.address, data.clientInfo.property],
-            [],
-            ['Umístění', 'Typ', 'Výrobní číslo', 'Odečet']
+    static createMeterReport(data, month, year) {
+        const workbook = XLSX.utils.book_new();
+        const page_headers = [
+            ["GUID","Výrobní číslo","Umístění","Typ","jednotka","Název nemovitosti","Adresa","Stav k "+ (month+"/"+year)],
+            ["měřidlo","jednotka","leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"]
         ];
 
         // pridavani odectu meridel
-        const wsData = [
-            ...headerData,
-            ...data.meterData.map(meter => [
-                meter.location,
-                meter.type,
-                meter.guid,
-                meter.decrease
-            ])
+        const sheet_all_gauges_data = [
+            page_headers[0],
         ];
+        for(let row of data.all_gauge_data)
+        {
+            sheet_all_gauges_data.push( Object.values(row));
+        }
 
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const sheet_gauge_type_spending_data =
+            [
+                page_headers[1],
+            ]
 
-        // basic formatovani - klidne uprav jak je libo
-        ws['!cols'] = [
-            {wch: 15}, // umisteni
-            {wch: 12}, // typ
-            {wch: 20}, // UID
-            {wch: 12}  // odecet
-        ];
+        for (let month_data of data.gauge_type_month_spendings)
+        {
+            sheet_gauge_type_spending_data.push(month_data);
+        }
 
-        XLSX.utils.book_append_sheet(workbook, ws, "Odečty měřidel");
+
+
+
+        const sheet_gauge_type_spending = XLSX.utils.aoa_to_sheet(sheet_gauge_type_spending_data);
+
+
+        const sheet_all_gauges = XLSX.utils.aoa_to_sheet(sheet_all_gauges_data);
+
+        XLSX.utils.book_append_sheet(workbook, sheet_all_gauges, "Odečty měřidel");
+        XLSX.utils.book_append_sheet(workbook, sheet_gauge_type_spending, "Roční přehled");
         return XLSX.write(workbook, {type: 'buffer', bookType: 'xlsx'});
     }
 

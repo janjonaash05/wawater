@@ -34,7 +34,6 @@ class GaugeController implements IController
             return ["msg" => "invalid parameters"];
         }
 
-
         $nanoid = new Client();
         $guid = $nanoid->formattedId($alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', $size = 8);
         try {
