@@ -18,7 +18,7 @@ class GaugeController implements IController
 
             $name = $data["property_name"];
             $property_id = DatabaseConnection::execute_statement_single_row("select id from Property where name = ? and client_id = ? ", [$name, $client_id])["id"];
-            return DatabaseConnection::execute_statement("select * from Gauge where property_id = ?", [$property_id]);
+            return DatabaseConnection::execute_statement("select * from Gauge inner join GaugeType on Gauge.gauge_type_id = GaugeType.id where property_id = ?", [$property_id]);
         } catch (Exception $e) {
             http_response_code(400);
             return $e->getMessage();

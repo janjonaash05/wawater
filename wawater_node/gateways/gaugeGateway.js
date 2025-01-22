@@ -107,15 +107,15 @@ class GaugeGateway {
         return new Promise((resolve, reject) => {
             conn.query
             (
-                ` select Gauge.guid, Gauge.serial_number, Gauge.location_sign, GaugeType.name as gauge_type, GaugeType.value_unit,Property.name as property_name, Property.address , Sum(GaugeDecrease.value) as gauge_value from GaugeDecrease
-            right outer join Gauge on GaugeDecrease.gauge_id = Gauge.id
-            inner join GaugeType on Gauge.gauge_type_id = GaugeType.id
-
-            inner join Property on Property.id = Gauge.property_id
-            where Property.client_id = ?
-                and GaugeDecrease.decrease_date between ? and ?
-                group by guid;`,
-                [client_id,date_start, date_end], (err, result_gauge) => {
+                `  select Gauge.guid, Gauge.serial_number, Gauge.location_sign, GaugeType.name as gauge_type, GaugeType.value_unit,Property.name as property_name, GaugeDecrease.decrease_date,
+                 Property.address , Sum(GaugeDecrease.value) as gauge_value
+            from GaugeDecrease
+            right outer join Gauge on GaugeDecrease.gauge_id = Gauge.id and decrease_date between  ? and ?
+             right outer join GaugeType on Gauge.gauge_type_id = GaugeType.id
+               right outer join Property on Property.id = Gauge.property_id
+            and Property.client_id = ?
+                group by guid    `,
+                [date_start, date_end,client_id], (err, result_gauge) => {
 
                     resolve(result_gauge);
 
@@ -126,18 +126,17 @@ class GaugeGateway {
 
 
 
-    static getAllGaugeTypeSpending(client_id, month_start, month_end, ignore_gauge_name) {
+    static getAllGaugeTypeSpending(client_id, month_start, month_end, ignore_gauge_name = false) {
         return new Promise((resolve, reject) => {
             conn.query
             (
                 `
 select ${!ignore_gauge_name ? "GaugeType.name, GaugeType.value_unit,":""}  sum(value) as value from GaugeDecrease 
-        right outer join Gauge on Gauge.id = GaugeDecrease.gauge_id
-                left outer join GaugeType on GaugeType.id = Gauge.gauge_type_id
-                where Gauge.property_id in (select id from Property where client_id = ?)
-                 and month(GaugeDecrease.decrease_date) between ? and ? 
-                group by GaugeType.name;`,
-                [client_id,month_start, month_end], (err, result_gauge) => {
+        right outer join Gauge on Gauge.id = GaugeDecrease.gauge_id and month(decrease_date) between ? and ?
+                 left outer join GaugeType on GaugeType.id = Gauge.gauge_type_id
+                 where Gauge.property_id in (select id from Property where client_id = ?)
+                 group by GaugeType.name`,
+                [month_start, month_end,client_id], (err, result_gauge) => {
 
                 resolve(result_gauge);
             })

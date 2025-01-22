@@ -8,6 +8,7 @@ const gaugeGW = require("./gateways/gaugeGateway.js");
 const firmGW = require("./gateways/firmGateway.js");
 
 const authUtils = require("./authUtils.js");
+const {json} = require("express");
 
 const app = express();
 //app.use(express.static(path.join(__dirname, "public")));
@@ -178,14 +179,15 @@ app.get("/client/excel-overview", authenticateClient, async (req, res) => {
 
         }
 
-
-         return res.status(200).json(all_gauge_data);
+        console.log(JSON.stringify({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings}));
+         return res.status(200).json({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings});
         // for (let i = 0; i < 11; i++) {
         //
         //     let gauge_type_month_spending = await gaugeGW.getAllGaugeTypeSpending(client_id, get_previous_month_date(current_date), current_date);
         //     current_date = get_previous_month_date(current_date);
         //
         // }
+
 
         let report = ExcelUtility.createMeterReport({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings}, current_date.getMonth(), current_date.getFullYear());
         // return res.status(200).json(report);

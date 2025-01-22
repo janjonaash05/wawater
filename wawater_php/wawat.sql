@@ -93,15 +93,23 @@ set @`belongs` = (@`gauge_id`  in (select id from Gauge where property_id in (se
 
 
 
--- select GaugeType.name, GaugeType.value_unit,   sum(value) as value from GaugeDecrease 
--- 				right outer join Gauge on Gauge.id = GaugeDecrease.gauge_id
---                 left outer join GaugeType on GaugeType.id = Gauge.gauge_type_id
---                -- where Gauge.property_id in (select id from Property where client_id = ?)
---                 -- and GaugeDecrease.decrease_date between ? and ? 
---                 group by GaugeType.name;
+ select GaugeType.name, GaugeType.value_unit,   sum(value) as value from GaugeDecrease 
+ 				right outer join Gauge on Gauge.id = GaugeDecrease.gauge_id and decrease_date between '2020-02-02' and '2020-02-02'
+                 left outer join GaugeType on GaugeType.id = Gauge.gauge_type_id
+                 where Gauge.property_id in (select id from Property where client_id = 1)
+                 group by GaugeType.name;
 				
                 
-                
+                select * from GaugeDecrease;
+  select Gauge.guid, Gauge.serial_number, Gauge.location_sign, GaugeType.name as gauge_type, GaugeType.value_unit,Property.name as property_name, GaugeDecrease.decrease_date,
+                 Property.address , Sum(GaugeDecrease.value) as gauge_value
+			from GaugeDecrease
+            right outer join Gauge on GaugeDecrease.gauge_id = Gauge.id and decrease_date between '2020-02-02' and '2020-02-02'
+             
+             right outer join GaugeType on Gauge.gauge_type_id = GaugeType.id
+               right outer join Property on Property.id = Gauge.property_id
+            and Property.client_id = 1
+                group by guid              
                 
                 
                 
