@@ -37,18 +37,8 @@
         }
 
         @keyframes rotate {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        @media (min-width: 720px) {
-            .gradient {
-                --size: 500px;
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .content-wrapper {
@@ -68,6 +58,12 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
 
+        .login-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
         .form-group {
             margin-bottom: 15px;
         }
@@ -81,10 +77,6 @@
             cursor: pointer;
             transition: background-color 0.3s;
             background: rgba(255, 255, 255, 0.8);
-        }
-
-        .upload-area:hover {
-            background-color: rgba(0, 123, 255, 0.1);
         }
 
         .upload-area.dragover {
@@ -109,36 +101,7 @@
             color: #721c24;
         }
 
-        .tab-container {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .tab-button {
-            padding: 10px 20px;
-            border: none;
-            background: rgba(0, 0, 0, 0.8);
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .tab-button.active {    
-            background: #007bff;
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        button {
+        button, input[type="submit"] {
             background-color: #007bff;
             color: white;
             padding: 10px 20px;
@@ -148,7 +111,7 @@
             transition: background-color 0.3s;
         }
 
-        button:hover {
+        button:hover, input[type="submit"]:hover {
             background-color: #0056b3;
         }
 
@@ -171,6 +134,10 @@
             margin-bottom: 30px;
             text-align: center;
         }
+
+        #uploadSection {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -178,25 +145,31 @@
     <div class="content-wrapper">
         <div class="form-container">
             <h1>Nahrání dat měření</h1>
-
+            
             <div id="successAlert" class="alert alert-success">
                 Data byla úspěšně nahrána
             </div>
-
+            
             <div id="errorAlert" class="alert alert-error">
                 Došlo k chybě při nahrávání dat
             </div>
 
-            <div class="tab-container">
-                <button class="tab-button active" onclick="showTab('file')">Nahrání souboru</button>
-                <button class="tab-button" onclick="showTab('ftp')">FTP přístup</button>
+            <div class="login-section">
+                <div class="form-group">
+                    <label for="username">Uživatelské jméno:</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Heslo:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button onclick="login()">Přihlásit se</button>
             </div>
 
-            <form id="fileTab" class="tab-content active" method="post" enctype="multipart/form-data" action="http://s-DD-C4a-24.dev.spsejecna.net:21166/firm/decrease-gauges/excel">
+            <div id="uploadSection">
                 <div class="upload-area" id="dropZone">
                     <p>Přetáhněte CSV soubor sem nebo</p>
-                    <input type="file" id="fileInput" accept=".xlsx" name="excel">
-                     <!-- <button onclick="document.getElementById('fileInput').click()">Vyberte soubor</button> -->
+                    <input type="file" id="fileInput" accept=".xlsx">
                     <div id="fileInfo" class="file-info"></div>
                 </div>
 
@@ -206,41 +179,36 @@
                         <option value="">-- Vyberte nemovitost --</option>
                     </select>
                 </div>
-                <input type="submit" value="send">
-                <!-- <button onclick="uploadFile()">Nahrát data</button> -->
-            </form>
-
-            <div id="ftpTab" class="tab-content">
-                <h3>FTP přístupové údaje</h3>
-                <div class="form-group">
-                    <label>Server: ftp.example.com</label>
-                </div>
-                <div class="form-group">
-                    <label>Uživatelské jméno: Vaše přihlašovací jméno</label>
-                </div>
-                <div class="form-group">
-                    <label>Heslo: Vaše FTP heslo</label>
-                </div>
-                <div class="form-group">
-                    <label>Port: 21</label>
-                </div>
-                <p>Pro získání přístupových údajů kontaktujte správce systému.</p>
+                <button onclick="uploadFile()">Nahrát data</button>
             </div>
         </div>
     </div>
 
     <script>
-        // [Previous JavaScript code remains exactly the same]
-        function showTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.classList.remove('active');
-            });
+        const API_BASE = 'http://s-DD-C4a-24.dev.spsejecna.net:21166';
+        let authHeader = '';
 
-            document.getElementById(tabName + 'Tab').classList.add('active');
-            event.target.classList.add('active');
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            authHeader = 'Basic ' + btoa(username + ':' + password);
+            
+            fetch(`${API_BASE}/firm/decrease-gauges/excel`, {
+                headers: {
+                    'Authorization': authHeader
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById('uploadSection').style.display = 'block';
+                    document.querySelector('.login-section').style.display = 'none';
+                } else {
+                    showError('Nesprávné přihlašovací údaje');
+                }
+            })
+            .catch(error => {
+                showError('Chyba při přihlašování');
+            });
         }
 
         const dropZone = document.getElementById('dropZone');
@@ -259,8 +227,7 @@
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            handleFiles(files);
+            handleFiles(e.dataTransfer.files);
         });
 
         fileInput.addEventListener('change', (e) => {
@@ -283,7 +250,7 @@
             const file = fileInput.files[0];
             const propertyId = document.getElementById('propertySelect').value;
 
-            if (!file) {
+            if (!file || !propertyId) {
                 showError('Prosím vyberte soubor a nemovitost');
                 return;
             }
@@ -291,10 +258,12 @@
             const formData = new FormData();
             formData.append('excel', file);
             formData.append('propertyId', propertyId);
-            
 
-            fetch('http://s-DD-C4a-24.dev.spsejecna.net:21166/firm/decrease-gauges/excel', {
+            fetch(`${API_BASE}/firm/decrease-gauges/excel`, {
                 method: 'POST',
+                headers: {
+                    'Authorization': authHeader
+                },
                 body: formData
             })
             .then(response => response.json())
@@ -324,18 +293,6 @@
                 alert.style.display = 'none';
             }, 3000);
         }
-
-        fetch('/api/properties')
-            .then(response => response.json())
-            .then(properties => {
-                const select = document.getElementById('propertySelect');
-                properties.forEach(property => {
-                    const option = document.createElement('option');
-                    option.value = property.id;
-                    option.textContent = property.name;
-                    select.appendChild(option);
-                });
-            });
     </script>
 </body>
 </html>
