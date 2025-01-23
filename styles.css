@@ -1,0 +1,130 @@
+* {
+    transition: all 0.5s ease-out;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background-color: #071c39;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    place-content: center;
+    align-items: center;
+}
+
+.gradient {
+    --size: 750px;
+    --speed: 50s;
+    --easing: cubic-bezier(0.8, 0.2, 0.2, 0.8);
+    width: var(--size);
+    height: var(--size);
+    filter: blur(calc(var(--size) / 5));
+    background-image: linear-gradient(hsl(222, 84%, 60%), hsl(164, 79%, 71%));
+    animation: rotate var(--speed) var(--easing) alternate infinite;
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    position: fixed;
+    z-index: 1;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 800px;
+    margin: 20px;
+    padding: 20px;
+}
+
+.form-container {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.login-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.upload-area {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.upload-area.dragover {
+    background-color: rgba(0, 123, 255, 0.2);
+    border-color: #0056b3;
+}
+
+.alert {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    display: none;
+}
+
+.alert-success {
+    background-color: rgba(212, 237, 218, 0.9);
+    color: #155724;
+}
+
+.alert-error {
+    background-color: rgba(248, 215, 218, 0.9);
+    color: #721c24;
+}
+
+button, input[type="submit"] {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover, input[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+.file-info {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+select, input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
