@@ -10,7 +10,6 @@ class ClientGateway {
         });
     }
 
-
     static deleteClient(client_username, firm_id) {
         return new Promise((resolve, reject) => {
             conn.query("delete from Client where username = ? and firm_id = ? ", [client_username, firm_id], (err, res) => {
@@ -26,7 +25,6 @@ class ClientGateway {
             })
         });
     }
-
 
     static getIdPasswordForUsername(username) {
         return new Promise((resolve, reject) => {

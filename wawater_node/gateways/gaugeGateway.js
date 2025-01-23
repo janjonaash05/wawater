@@ -27,6 +27,15 @@ class GaugeGateway {
         });
     }
 
+
+    static gaugeMonthOverviewGetAllClients() {
+        return new Promise((resolve, reject) => {
+            conn.query("Select id,username,email from Client where id in(select client_id from GaugeMonthOverview)", (err, result) => {
+                resolve(result);
+            })
+        });
+    }
+
     static gaugeMonthOverviewRegister(client_id) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMonthOverview(client_id) values (?)", [client_id], (err, result) => {

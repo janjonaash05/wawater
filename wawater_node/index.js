@@ -62,6 +62,49 @@ app.get('/firm/deez', async (req, res) => {
     //next();
 })
 
+app.put("/firm/update", authenticateAdmin, async (req, res) =>
+{
+    let {username, name, email} = req.body;
+    try {
+        if(username !== authUtils.sysadminUsername)
+            throw "Invalid Username";
+        await firmGW.updateFirm(name, email);
+    } catch (err) {
+        res.status(500).json(err);
+    }
+})
+
+
+app.post('/firm/register', authenticateAdmin, async (req, res) => {
+    let {username, name, email} = req.body;
+
+    try {
+        if(username !== authUtils.sysadminUsername)
+            throw "Invalid Username";
+        await firmGW.registerFirm(name, email);
+    } catch (err) {
+        res.status(500).json(err);
+    }
+
+
+})
+
+app.post('/firm/delete', authenticateAdmin, async (req, res) => {
+    let {username, firm_name} = req.body;
+
+    try {
+        if(username !== authUtils.sysadminUsername)
+            throw "Invalid Username";
+        await firmGW.deleteFirm(firm_name);
+    } catch (err) {
+        res.status(500).json(err);
+    }
+
+
+})
+
+
+
 
 app.post('/firm/client/register', authenticateAdmin, async (req, res) => {
 
@@ -115,7 +158,7 @@ app.delete("/firm/client/delete", async (req, res) => {
 });
 
 
-app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res) => {
+app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"), async (req, res) => {
     try {
         // res.json(Object.getOwnPropertyNames(req.file.buffer));
         let ob = ExcelUtility.readMeterData(Buffer.from(req.file.buffer));
@@ -153,52 +196,47 @@ app.post('/firm/decrease-gauges/excel', upload.single("excel"), async (req, res)
 app.get("/client/excel-overview", authenticateClient, async (req, res) => {
     let client_id = req.body.client_id;
 
-    let current_date = new Date();
-
-    try
-    {
-        let all_gauge_data = await gaugeGW.getAllGaugeDecreaseInfo(client_id, get_previous_month_date(current_date), current_date);
 
 
-        let gauge_type_month_spendings = [];
+    try {
 
-        let headers_january_spending = await gaugeGW.getAllGaugeTypeSpending(client_id,1,2)
-        for(let row of headers_january_spending)
-        {
-            gauge_type_month_spendings.push(Object.values(row)); //set initial gauge name and january spending
-        }
-
-        for(let i = 2; i <11;i++)
-        {
-            let only_month_spending = await gaugeGW.getAllGaugeTypeSpending(client_id,i,i+1,true)
-
-            for(let j = 0; j < only_month_spending.length; j++)
-            {
-                gauge_type_month_spendings[j].push(only_month_spending[j].value);
-            }
-
-        }
-
-        console.log(JSON.stringify({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings}));
-         return res.status(200).json({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings});
-        // for (let i = 0; i < 11; i++) {
-        //
-        //     let gauge_type_month_spending = await gaugeGW.getAllGaugeTypeSpending(client_id, get_previous_month_date(current_date), current_date);
-        //     current_date = get_previous_month_date(current_date);
-        //
-        // }
-
-
-        let report = ExcelUtility.createMeterReport({all_gauge_data: all_gauge_data, gauge_type_month_spendings: gauge_type_month_spendings}, current_date.getMonth(), current_date.getFullYear());
-        // return res.status(200).json(report);
+        let report = await GetReport(client_id);
 
         res.status(200).setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").send(report);
-    }catch (err)
-    {
-        res.status(520).json({err:err});
+    } catch (err) {
+        res.status(520).json({err: err});
     }
 
 });
+
+
+async function GetReport(client_id)
+{
+    let current_date = new Date();
+    let all_gauge_data = await gaugeGW.getAllGaugeDecreaseInfo(client_id, get_previous_month_date(current_date), current_date);
+    let gauge_type_month_spendings = [];
+
+    let headers_january_spending = await gaugeGW.getAllGaugeTypeSpending(client_id, 1, 2)
+    for (let row of headers_january_spending) {
+        gauge_type_month_spendings.push(Object.values(row)); //set initial gauge name and january spending
+    }
+
+    for (let i = 2; i < 11; i++) {
+        let only_month_spending = await gaugeGW.getAllGaugeTypeSpending(client_id, i, i + 1, true)
+
+        for (let j = 0; j < only_month_spending.length; j++) {
+            gauge_type_month_spendings[j].push(only_month_spending[j].value);
+        }
+    }
+
+    let report = ExcelUtility.createMeterReport({
+        all_gauge_data: all_gauge_data,
+        gauge_type_month_spendings: gauge_type_month_spendings
+    }, current_date.getMonth(), current_date.getFullYear());
+}
+
+
+
 
 function get_previous_month_date(date, set_first_day = false) {
     return new Date(date.getFullYear(), date.getMonth() - 1, date.getDay());
@@ -344,3 +382,24 @@ async function authenticateAdmin(req, res, next) {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+setTimeout(async () => {
+
+    let date = new Date();
+    if (date.getDay() === 1)
+    {
+
+       let data = await gaugeGW.gaugeMonthOverviewGetAllClients()
+        for(let row of data)
+        {
+            const {id, username, email} = row;
+
+            let report = await GetReport(id);
+        }
+
+    }
+
+
+
+
+}, 86_400_000);

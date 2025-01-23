@@ -2,9 +2,9 @@
 
 class AuthUtils {
 
+    static sysadminUsername = "SYSADMIN";
 
-
-    static verifySysAdmin(username, password) { return username === "SYSADMIN" && password === "1234" }
+    static verifySysAdmin(username, password) { return username === AuthUtils.sysadminUsername && password === "1234" }
 
     static generateAPassword() {
         return new Promise((resolve, reject) => {

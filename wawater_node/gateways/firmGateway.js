@@ -19,6 +19,32 @@ class FirmGateway {
     }
 
 
+    static registerFirm(name, email) {
+        return new Promise((resolve, reject) => {
+            conn.query("insert into Firm(name,email) values (?,?)", [name,email], (err, res) => {
+                resolve();
+            })
+        });
+    }
+
+    static updateFirm(firm_id, name, email)
+    {
+        return new Promise((resolve, reject) => {
+            conn.query("update Firm set name = ? and email = ? where id = ?", [name,email, firm_id], (err, res) => {
+                resolve();
+            })
+        });
+    }
+
+    static deleteFirm(firm_id)
+    {
+        return new Promise((resolve, reject) => {
+            conn.query("delete from Firm where id = ?", [firm_id], (err, res) => {
+                resolve();
+            })
+        });
+    }
+
     static getFirmIdWithNoAdminForName(firm_name) {
         return new Promise((resolve, reject) => {
             conn.query("select id from Firm where name = ? and not exists (select 1 from Client where is_admin = true and firm_id = id)", [firm_name], (err, res) => {
