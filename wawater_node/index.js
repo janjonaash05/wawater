@@ -20,19 +20,15 @@ const storage = multer.memoryStorage();
 const upload = multer({storage: storage});
 
 
-const mymail = "ddcorp@seznam.cz";
+const mymail = "ddcorp@seznam.cz"; //abc12345
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.seznam.cz',
-    secure: true,
-    port: 465,
+    host: 'smtp.lmsoft.cz',
+    secure: false,
+    port: 925,
     auth: {
-        user: mymail,
-        pass: 'abc12345'
-    },
-    tls: {
-        // do not fail on invalid certs
-        rejectUnauthorized: false
+        user: "redmine@lmsoft.cz",
+        pass: 'redmine'
     },
 });
 
@@ -43,18 +39,18 @@ app.get('/firm/deez', async (req, res) => {
 
 
     let mailOptions = {
-        from: mymail,
+        from: "redmine@lmsoft.cz" ,
         to: mymail,
         subject: 'Registration at ' + "firm_name",
         text: 'Username: ' + "client_username" + " password: " + "password"
     };
 
 
-    await transporter.sendMail(mailOptions, function (error, info) {
+    transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
             res.status(500).json({msg: error});
         } else {
-            res.status(200).json({msg: "info"});
+            res.status(200).json({msg: "nuts"});
         }
     });
 
