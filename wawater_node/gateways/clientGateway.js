@@ -5,6 +5,8 @@ class ClientGateway {
     static registerClient(client_username, password_hash, client_email, firm_id, assign_admin = null) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into Client(username, password,email,is_admin, firm_id) values (?,?,?,?,?)", [client_username, password_hash, client_email, assign_admin ?? false, firm_id], (err, res) => {
+
+                if(err) reject(err)
                 resolve(!!res);
             })
         });
@@ -13,6 +15,7 @@ class ClientGateway {
     static deleteClient(client_username, firm_id) {
         return new Promise((resolve, reject) => {
             conn.query("delete from Client where username = ? and firm_id = ? ", [client_username, firm_id], (err, res) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -21,6 +24,7 @@ class ClientGateway {
     static deleteAllClients() {
         return new Promise((resolve, reject) => {
             conn.query("delete from Client", (err, res) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -29,7 +33,8 @@ class ClientGateway {
     static getIdPasswordForUsername(username) {
         return new Promise((resolve, reject) => {
             conn.query("Select id,password from Client where username = ?", [username], (err, res) => {
-                resolve({id: res[0].id, password: res[0].password});
+                if(err) reject(err)
+                resolve({id: res?.[0]?.id, password: res?.[0]?.password});
             })
         });
     }
@@ -37,7 +42,8 @@ class ClientGateway {
     static getIdForUsername(username) {
         return new Promise((resolve, reject) => {
             conn.query("Select id from Client where username = ?", [username], (err, res) => {
-                resolve(res[0].id);
+                if(err) reject(err)
+                resolve(res?.[0]?.id);
             })
         });
     }
@@ -62,7 +68,8 @@ class ClientGateway {
             query += " where username = ?"
             params.push(current_client_username);
             conn.query(query, params, (err, res) => {
-
+                if(err) reject(err)
+                resolve()
             })
         });
     }

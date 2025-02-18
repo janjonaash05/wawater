@@ -12,6 +12,17 @@ const {json} = require("express");
 
 const app = express();
 //app.use(express.static(path.join(__dirname, "public")));
+
+const cors = require("cors");
+
+const corsOptions = {
+    origin: '*',
+    preflightContinue: true,
+};
+//app.use(cors(corsOptions));
+
+
+
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
 
@@ -23,23 +34,30 @@ const upload = multer({storage: storage});
 const mymail = "ddcorp@seznam.cz"; //abc12345
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.lmsoft.cz',
+    host: '77.75.77.165',
     secure: false,
-    port: 925,
+    port: 25,
     auth: {
-        user: "redmine@lmsoft.cz",
-        pass: 'redmine'
+        user: "ddcorp@seznam.cz",
+        pass: 'abc12345'
     },
+    logger: true,
+    debug: true,
 });
 
 
 const PORT = 9009;
 
+
+app.get('/firm/deez2', (req, res) => {
+    res.send('NUTS2');
+});
+
 app.get('/firm/deez', async (req, res) => {
 
 
     let mailOptions = {
-        from: "redmine@lmsoft.cz" ,
+        from: "ddcorp@seznam.cz",
         to: mymail,
         subject: 'Registration at ' + "firm_name",
         text: 'Username: ' + "client_username" + " password: " + "password"
@@ -58,11 +76,10 @@ app.get('/firm/deez', async (req, res) => {
     //next();
 })
 
-app.put("/firm/update", authenticateAdmin, async (req, res) =>
-{
+app.put("/firm/update", authenticateAdmin, async (req, res) => {
     let {username, name, email} = req.body;
     try {
-        if(username !== authUtils.sysadminUsername)
+        if (username !== authUtils.sysadminUsername)
             throw "Invalid Username";
         await firmGW.updateFirm(name, email);
     } catch (err) {
@@ -75,7 +92,7 @@ app.post('/firm/register', authenticateAdmin, async (req, res) => {
     let {username, name, email} = req.body;
 
     try {
-        if(username !== authUtils.sysadminUsername)
+        if (username !== authUtils.sysadminUsername)
             throw "Invalid Username";
         await firmGW.registerFirm(name, email);
     } catch (err) {
@@ -89,7 +106,7 @@ app.post('/firm/delete', authenticateAdmin, async (req, res) => {
     let {username, firm_name} = req.body;
 
     try {
-        if(username !== authUtils.sysadminUsername)
+        if (username !== authUtils.sysadminUsername)
             throw "Invalid Username";
         await firmGW.deleteFirm(firm_name);
     } catch (err) {
@@ -98,8 +115,6 @@ app.post('/firm/delete', authenticateAdmin, async (req, res) => {
 
 
 })
-
-
 
 
 app.post('/firm/client/register', authenticateAdmin, async (req, res) => {
@@ -154,6 +169,7 @@ app.delete("/firm/client/delete", async (req, res) => {
 });
 
 
+
 app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"), async (req, res) => {
     try {
         // res.json(Object.getOwnPropertyNames(req.file.buffer));
@@ -162,26 +178,20 @@ app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"
 
         let client_id = await clientGW.getIdForUsername(client_info.client);
 
+        let toret = [];
         for (let gauge_line of gauge_data) {
             let gauge_id = await gaugeGW.getIdForGuidAndVerifyOwner(gauge_line.guid, client_id);
 
-            let belongsToFirm = await gaugeGW.gaugeBelongsToFirm(gauge_id, req.body.firm_id)
-            if (!!belongsToFirm) return res.status(400).json({msg: gauge_line.guid + " does not belong"})
+            let belongsToFirm = await gaugeGW.gaugeBelongsToUser(gauge_id, req.body.firm_id)
+            if (!belongsToFirm) return res.status(400).json({msg: gauge_line.guid + " does not belong"})
 
-            let max_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
-            let month_avg_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
+            // let max_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
+            // let month_avg_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
 
+            toret.push({date: client_info.date, gauge_id: gauge_id, val: gauge_line.value});
             await gaugeGW.insertGaugeDecrease(client_info.date, gauge_id, gauge_line.value);
-
-
-            if (max_registered) {
-                let exceeded = await gaugeGW.gaugeMaxExceededDuringMonthCheck(gauge_id,)
-            }
-
-            if (month_avg_registered) {
-                let exceeded = await gaugeGW.gaugeMonthAverageExceededCheck()
-            }
         }
+        res.status(200).json(toret);
 
     } catch (err) {
         res.status(500).json({msg: err});
@@ -191,7 +201,6 @@ app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"
 
 app.get("/client/excel-overview", authenticateClient, async (req, res) => {
     let client_id = req.body.client_id;
-
 
 
     try {
@@ -206,8 +215,7 @@ app.get("/client/excel-overview", authenticateClient, async (req, res) => {
 });
 
 
-async function GetReport(client_id)
-{
+async function GetReport(client_id) {
     let current_date = new Date();
     let all_gauge_data = await gaugeGW.getAllGaugeDecreaseInfo(client_id, get_previous_month_date(current_date), current_date);
     let gauge_type_month_spendings = [];
@@ -230,8 +238,6 @@ async function GetReport(client_id)
         gauge_type_month_spendings: gauge_type_month_spendings
     }, current_date.getMonth(), current_date.getFullYear());
 }
-
-
 
 
 function get_previous_month_date(date, set_first_day = false) {
@@ -347,7 +353,7 @@ async function authenticateAdmin(req, res, next) {
     const [username, password] = authUtils.extractUsernamePasswordFromRequest(req);
 
     if (!username || !password) {
-        return res.status(401).send("Unathorized")
+        return res.status(401).send("Unathorized, no username or password")
     }
     try {
         if (req.body.assign_admin == true) {
@@ -366,7 +372,7 @@ async function authenticateAdmin(req, res, next) {
             req.body.firm_id = obj.firm_id;
             next();
         } else {
-            return res.status(401).send("Unathorized")
+            return res.status(401).send("Unathorized, not verified")
         }
     } catch (err) {
         return res.status(401).json(err);
@@ -382,20 +388,16 @@ app.listen(PORT, () => {
 setTimeout(async () => {
 
     let date = new Date();
-    if (date.getDay() === 1)
-    {
+    if (date.getDay() === 1) {
 
-       let data = await gaugeGW.gaugeMonthOverviewGetAllClients()
-        for(let row of data)
-        {
+        let data = await gaugeGW.gaugeMonthOverviewGetAllClients()
+        for (let row of data) {
             const {id, username, email} = row;
 
             let report = await GetReport(id);
         }
 
     }
-
-
 
 
 }, 86_400_000);

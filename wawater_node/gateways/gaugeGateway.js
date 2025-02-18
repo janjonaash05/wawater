@@ -6,6 +6,7 @@ class GaugeGateway {
     static gaugeRegistered(gauge_id, trigger_table) {
         return new Promise((resolve, reject) => {
             conn.query("select 1 from ? where gauge_id = ?", [trigger_table, gauge_id], (err, res) => {
+                if(err) reject(err)
                 resolve(!!res);
             })
         });
@@ -14,6 +15,7 @@ class GaugeGateway {
     static gaugeMonthAverageExceededRegister(client_id, gauge_id) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMonthAverageExceeded(client_id, gauge_id) values (?,?)", [client_id, gauge_id], (err, result) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -22,6 +24,7 @@ class GaugeGateway {
     static gaugeMonthAverageExceededDelete(client_id, gauge_id) {
         return new Promise((resolve, reject) => {
             conn.query("Delete from GaugeMonthAverageExceeded where client_id = ? and gauge_id = ?", [client_id, gauge_id], (err, result) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -31,6 +34,7 @@ class GaugeGateway {
     static gaugeMonthOverviewGetAllClients() {
         return new Promise((resolve, reject) => {
             conn.query("Select id,username,email from Client where id in(select client_id from GaugeMonthOverview)", (err, result) => {
+                if(err) reject(err)
                 resolve(result);
             })
         });
@@ -39,6 +43,7 @@ class GaugeGateway {
     static gaugeMonthOverviewRegister(client_id) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMonthOverview(client_id) values (?)", [client_id], (err, result) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -47,6 +52,7 @@ class GaugeGateway {
     static gaugeMonthOverviewDelete(client_id) {
         return new Promise((resolve, reject) => {
             conn.query("Delete from GaugeMonthOverview where client_id = ?", [client_id], (err, result) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -55,6 +61,7 @@ class GaugeGateway {
     static gaugeMaxExceededRegister(client_id, gauge_id, max_value) {
         return new Promise((resolve, reject) => {
             conn.query("Insert into GaugeMaxExceeded(client_id, gauge_id, max_value) values (?,?,?)", [client_id, gauge_id, max_value], (err, result) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -63,6 +70,7 @@ class GaugeGateway {
     static gaugeMaxExceededDelete(client_id, gauge_id, max_value) {
         return new Promise((resolve, reject) => {
             conn.query("Delete from GaugeMonthOverview where client_id = ? and gauge_id = ?", [client_id, gauge_id], (err, result) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -70,9 +78,10 @@ class GaugeGateway {
 
 
 //// PROCEDURES
-    static gaugeBelongsToFirm(gauge_id, property_name, firm_id, username) {
+    static gaugeBelongsToUser(gauge_id, property_name, firm_id, username) {
         return new Promise((resolve, reject) => {
             conn.query("call GaugeBelongsToUserCheck(?,?,?,?, @belongs)", [gauge_id, property_name, firm_id, username], (err, res) => {
+                if(err) reject(err)
                 resolve(!!res);
             })
         });
@@ -81,6 +90,7 @@ class GaugeGateway {
     static gaugeMonthAverageExceededCheck(gauge_id, month, year) {
         return new Promise((resolve, reject) => {
             conn.query("call GaugeMonthAverageExceededCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
+                if(err) reject(err)
                 resolve(!!res);
             })
         });
@@ -89,6 +99,7 @@ class GaugeGateway {
     static gaugeMaxExceededDuringMonthCheck(gauge_id, month, year) {
         return new Promise((resolve, reject) => {
             conn.query("call GaugeMaxExceededDuringMonthCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
+                if(err) reject(err)
                 resolve(!!res);
             })
         });
@@ -98,7 +109,8 @@ class GaugeGateway {
 
     static insertGaugeDecrease(date, gauge_id, value) {
         return new Promise((resolve, reject) => {
-            conn.query("Insert into GaugeDecrease(decrease_date,gauge_id,value) values (?,?,?)", [date, gauge_id, value], (err, res) => {
+            conn.query("insert into GaugeDecrease(decrease_date, value, gauge_id)  values(DATE_FORMAT(STR_TO_DATE(?, '%e.%c. %Y'), '%Y-%m-%d') ,?,?)", [date, value, gauge_id ], (err, res) => {
+                if(err) reject(err)
                 resolve();
             })
         });
@@ -106,8 +118,9 @@ class GaugeGateway {
 
     static getIdForGuidAndVerifyOwner(guid, client_id) {
         return new Promise((resolve, reject) => {
-            conn.query("Select id from Gauge where guid = ? and property_id in (select id from Property where client_id = ?", [guid, client_id], (err, result_gauge) => {
-                resolve(result_gauge[0].id);
+            conn.query("Select id from Gauge where guid = ? and property_id in (select id from Property where client_id = ?)", [guid, client_id], (err, result_gauge) => {
+                if(err) reject(err)
+                resolve(result_gauge?.[0]?.id);
             })
         });
     }
@@ -125,7 +138,7 @@ class GaugeGateway {
             and Property.client_id = ?
                 group by guid    `,
                 [date_start, date_end,client_id], (err, result_gauge) => {
-
+                    if(err) reject(err)
                     resolve(result_gauge);
 
                 })
@@ -146,7 +159,7 @@ select ${!ignore_gauge_name ? "GaugeType.name, GaugeType.value_unit,":""}  sum(v
                  where Gauge.property_id in (select id from Property where client_id = ?)
                  group by GaugeType.name`,
                 [month_start, month_end,client_id], (err, result_gauge) => {
-
+                    if(err) reject(err)
                 resolve(result_gauge);
             })
         });

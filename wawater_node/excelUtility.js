@@ -11,7 +11,7 @@ class ExcelUtility {
         try {
 
             const workbook = XLSX.read(filePath);
-            const sheet = workbook.Sheets[workbook.SheetNames[1]];
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
             // tohle bere info o klientovy z headeru
             const clientInfo = {
@@ -20,13 +20,12 @@ class ExcelUtility {
                 property_name: sheet['C2']?.v
             };
 
-
             const gaugeDataRaw = XLSX.utils.sheet_to_json(sheet, {
                 header: 1, //convert to 2D array
                 blankrows: false
             })
 
-              // Odstranění prázdných řádků
+            // Odstranění prázdných řádků
 
             let gaugeData = [];
             for (let i = 3; i < gaugeDataRaw.length; i++) {

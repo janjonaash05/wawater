@@ -55,10 +55,10 @@
         let authHeader = '';
 
         function proceedToLogin() {
-            const file = fileInput.files[0];
-            const propertyId = document.getElementById('propertySelect').value;
 
-            if (!file || !propertyId) {
+            const file = fileInput.files[0];
+			
+            if (!file) {
                 showError('Prosím vyberte soubor a nemovitost');
                 return;
             }
@@ -78,14 +78,15 @@
                 return;
             }
 
+
+            console.log(username+":"+password);
             authHeader = 'Basic ' + btoa(username + ':' + password);
             
             const formData = new FormData();
             formData.append('excel', file);
-            formData.append('propertyId', propertyId);
-
             fetch(`${API_BASE}/firm/decrease-gauges/excel`, {
                 method: 'POST',
+				
                 headers: {
                     'Authorization': authHeader
                 },
