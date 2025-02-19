@@ -21,7 +21,7 @@ const corsOptions = {
 };
 //app.use(cors(corsOptions));
 
-
+//dd@thasteryn.xyz abc12345;
 
 app.use(express.json())
 app.use(express.urlencoded({extended: false}));
@@ -54,27 +54,38 @@ app.get('/firm/deez2', (req, res) => {
 });
 
 app.get('/firm/deez', async (req, res) => {
-
-
-    let mailOptions = {
-        from: "ddcorp@seznam.cz",
-        to: mymail,
-        subject: 'Registration at ' + "firm_name",
-        text: 'Username: ' + "client_username" + " password: " + "password"
-    };
-
-
-    transporter.sendMail(mailOptions, function (error, info) {
-        if (error) {
-            res.status(500).json({msg: error});
-        } else {
-            res.status(200).json({msg: "nuts"});
+    const transporter = nodemailer.createTransport({
+        host: 'mail.thastertyn.xyz',
+        port: 465,
+        secure: true,
+        auth: {
+            user: 'dd@thastertyn.xyz',
+            pass: 'abc12345'
         }
     });
 
+    const mailOptions = {
+        from: 'dd@thastertyn.xyz',
+        to: 'ddcorp@seznam.cz',
+        subject: 'Test Email from Wawater API',
+        text: 'This is a test email from the Wawater system.'
+    };
 
-    //next();
-})
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent: ' + info.response);
+        res.status(200).json({
+            message: 'Email sent successfully',
+            messageId: info.messageId
+        });
+    } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({
+            message: 'Error sending email',
+            error: error.message
+        });
+    }
+});
 
 app.put("/firm/update", authenticateAdmin, async (req, res) => {
     let {username, name, email} = req.body;
