@@ -1,5 +1,6 @@
 ﻿const conn = require("../dbconn.js");
 const {reject} = require("nodemailer/.ncurc");
+const {json} = require("express");
 
 class GaugeGateway {
 
@@ -139,11 +140,20 @@ class GaugeGateway {
 
 
 //// PROCEDURES
-    static gaugeBelongsToUser(gauge_id, property_name, firm_id, username) {
+    static gaugeBelongsToUser(gauge_id, firm_id, client_id) {
         return new Promise((resolve, reject) => {
-            conn.query("call GaugeBelongsToUserCheck(?,?,?,?, @belongs)", [gauge_id, property_name, firm_id, username], (err, res) => {
+            conn.query("call GaugeBelongsToUserCheck(?,?,?, @belongs)", [gauge_id, firm_id, client_id], (err, res) => {
                 if (err) reject(err)
-                resolve(!!res);
+
+                conn.query("select @belongs as belongs", (err,res)=>
+                {
+                    if (err) reject(err)
+
+                    console.log(gauge_id+" "+firm_id+" "+client_id+" "+JSON.stringify(res))
+                    resolve(res?.[0]?.belongs);
+                })
+
+
             })
         });
     }
@@ -152,7 +162,11 @@ class GaugeGateway {
         return new Promise((resolve, reject) => {
             conn.query("call GaugeMonthAverageExceededCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
                 if (err) reject(err)
-                resolve(!!res);
+                conn.query("select @exceeded as exceeded", (err,res)=>
+                {
+                    if (err) reject(err)
+                    resolve(res?.[0]?.exceeded);
+                })
             })
         });
     }
@@ -161,16 +175,24 @@ class GaugeGateway {
         return new Promise((resolve, reject) => {
             conn.query("call GaugeMaxExceededDuringMonthCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
                 if (err) reject(err)
-                resolve(!!res);
+                conn.query("select @exceeded as exceeded", (err,res)=>
+                {
+                    if (err) reject(err)
+                    resolve(res?.[0]?.exceeded);
+                })
             })
         });
     }
 
     static gaugeMaxRemainderCheck(gauge_id, month, year) {
         return new Promise((resolve, reject) => {
-            conn.query("call GaugeMaxRemainderCheck(?,?,?, @remainder)", [gauge_id, month, year], (err, res) => {
+            conn.query("call GaugeMaxRemainderCheck(?,?,?, @remainder)", [gauge_id, +month, +year], (err, res) => {
                 if (err) reject(err)
-                resolve(res);
+                conn.query("select @remainder as remainder", (err,res)=>
+                {
+                    if (err) reject(err)
+                    resolve(res?.[0]?.remainder);
+                })
             })
         });
     }

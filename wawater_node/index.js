@@ -206,7 +206,7 @@ app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"
 
             let gauge_id = await gaugeGW.getIdForGuidAndVerifyOwner(gauge_line.guid, client_id);
 
-            let belongsToFirm = await gaugeGW.gaugeBelongsToUser(gauge_id, req.body.firm_id)
+            let belongsToFirm = await gaugeGW.gaugeBelongsToUser(gauge_id, req.body.firm_id, client_id)
             if (!belongsToFirm) return res.status(400).json({msg: gauge_line.guid + " does not belong"})
 
             // let max_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
@@ -217,12 +217,14 @@ app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"
                toSend["max-exceeded"].push(gauge_line.guid);
             }
 
-            if(await gaugeGW.gaugeMaxExceededDuringMonthCheck(gauge_id,month ,year ))
+            if(await gaugeGW.gaugeMonthAverageExceededCheck(gauge_id,month ,year ))
             {
                 toSend["month-average-exceeded"].push(gauge_line.guid);
             }
 
             let max_remainder = await gaugeGW.gaugeMaxRemainderCheck(gauge_id,month ,year )
+            console.log(max_remainder + " remainder");
+
             if(max_remainder != null)
             {
                 toSend["max-remainder"].push({guid:gauge_line.guid, remainder:max_remainder});
@@ -252,11 +254,9 @@ app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"
         messageStr += "remainder until a set value:\n";
         for (let g of toSend["max-remainder"])
         {
-            messageStr += g.guid +": "+g.remainder+ +"\n"
+            messageStr += g.guid +": "+g.remainder+"\n"
         }
 
-        res.status(250).json(messageStr);
-        return ;
         await mailUtils.sendMail(client_email, "Gauge trigger after update", messageStr, res)
 
 

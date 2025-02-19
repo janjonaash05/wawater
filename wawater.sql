@@ -59,7 +59,7 @@ DELIMITER ;
 
 
 DELIMITER $$
-create procedure GaugeMaxRemainderCheck(in `g_id` int, in `m` int,in  `y` int, out `remainder` bit)
+create procedure GaugeMaxRemainderCheck(in `g_id` int, in `m` int,in  `y` int, out `remainder` int)
 begin
 if not exists (select 1 from GaugeMaxRemainder where gauge_id = `g_id`) 
 then
@@ -78,7 +78,8 @@ DELIMITER ;
 
 
 
-create procedure GaugeBelongsToUserCheck(in `gauge_id` int, in `property_name` varchar(40), in `firm_id` int, in `username` varchar(20),  out belongs bit)
-set belongs =  (`gauge_id`  in (select id from Gauge where property_id in (select id from Property where name = `property_name` and client_id in (select id from Client where firm_id = `firm_id` and username = `username`))));
+create procedure GaugeBelongsToUserCheck(in `gauge_id` int, in `firm_id` int, in `client_id` int,  out belongs bit)
+set belongs =  (`gauge_id`  in (select id from Gauge where property_id in (select id from Property where client_id in (select id from Client where firm_id = `firm_id` and username = `username`))));
+
 
 
