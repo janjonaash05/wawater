@@ -48,6 +48,27 @@ class ClientGateway {
         });
     }
 
+    static getByUsername(username) {
+        return new Promise((resolve, reject) => {
+            conn.query("Select * from Client where username = ?", [username], (err, res) => {
+                if(err) reject(err)
+                resolve(res?.[0]);
+            })
+        });
+    }
+
+    static getEmailForUsername(username) {
+        return new Promise((resolve, reject) => {
+            conn.query("Select email from Client where username = ?", [username], (err, res) => {
+                if(err) reject(err)
+
+                console.log(res?.[0]);
+
+                resolve(res?.[0]?.email);
+            })
+        });
+    }
+
     static updateClient(new_client_username, password_hash, client_email, current_client_username) {
         return new Promise((resolve, reject) => {
             let params = [];

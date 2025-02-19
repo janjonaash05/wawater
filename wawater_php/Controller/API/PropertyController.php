@@ -26,6 +26,12 @@ class PropertyController implements IController
 
     private static function register($data, $username)
     {
+
+        if (!isset($data["name"], $data["address"])) {
+            header(http_response_code(400), true);
+            return ["msg" => "invalid parameters (must contain name, address)"];
+        }
+
         $name = $data["name"];
         $address = $data["address"];
 

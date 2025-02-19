@@ -20,6 +20,8 @@ create table GaugeDecrease(id int primary key auto_increment, decrease_date date
 create table GaugeMaxExceeded(id int primary key auto_increment, client_id int not null, gauge_id int not null unique, max_value int not null, constraint foreign key (client_id) references Client(id), constraint foreign key (gauge_id) references Gauge(id));
 create table GaugeMonthAverageExceeded(id int primary key auto_increment, client_id int not null, gauge_id int not null unique, constraint foreign key (client_id) references Client(id), constraint foreign key (gauge_id) references Gauge(id));
 create table GaugeMonthOverview(id int primary key auto_increment, client_id int not null unique, constraint foreign key (client_id) references Client(id));
+create table GaugeMaxRemainder(id int primary key auto_increment, client_id int not null, gauge_id int not null unique, max_value int not null, constraint foreign key (client_id) references Client(id), constraint foreign key (gauge_id) references Gauge(id));
+
 
 
 DELIMITER $$
@@ -52,6 +54,27 @@ set `exceeded` = ( @sum > @max);
 end if;
 end$$
 DELIMITER ;
+
+
+
+
+DELIMITER $$
+create procedure GaugeMaxRemainderCheck(in `g_id` int, in `m` int,in  `y` int, out `remainder` bit)
+begin
+if not exists (select 1 from GaugeMaxRemainder where gauge_id = `g_id`) 
+then
+select 'not in';
+set `remainder` = null;
+else
+set @max = (select max_value from GaugeMaxRemainder where gauge_id = `g_id`);
+set @sum = (select sum(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) =  `m` and YEAR(decrease_date) =  `y`));
+set `remainder` = (@max - @sum); 
+end if;
+end$$
+DELIMITER ;
+
+
+
 
 
 

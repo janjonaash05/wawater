@@ -16,8 +16,20 @@ class GaugeController implements IController
         try {
             $client_id = DatabaseConnection::execute_statement_single_row("select id from Client where username = ?", [$username])["id"];
 
+            if (!isset($data["property_name"])) {
+                header(http_response_code(400), true);
+                return ["msg" => "invalid parameters (must contain property_name)"];
+            }
+
+
             $name = $data["property_name"];
             $property_id = DatabaseConnection::execute_statement_single_row("select id from Property where name = ? and client_id = ? ", [$name, $client_id])["id"];
+            if($property_id == null)
+            {
+                http_response_code(400);
+                return ["msg" => "property_name not valid"];
+            }
+            
             return DatabaseConnection::execute_statement("select * from Gauge inner join GaugeType on Gauge.gauge_type_id = GaugeType.id where property_id = ?", [$property_id]);
         } catch (Exception $e) {
             http_response_code(400);
@@ -31,7 +43,7 @@ class GaugeController implements IController
 
         if (!isset($data["serial_number"], $data["property_name"], $data["gauge_type"], $data["location_sign"])) {
             header(http_response_code(400), true);
-            return ["msg" => "invalid parameters"];
+            return ["msg" => "invalid parameters (must contain serial_number, property_name, gauge_type, location_sign)"];
         }
 
         $nanoid = new Client();
@@ -44,11 +56,22 @@ class GaugeController implements IController
             $serial_number = $data["serial_number"];
             $property_name = $data["property_name"];
             $property_id = DatabaseConnection::execute_statement_single_row("Select id from Property where name = ? and client_id = ?", [$property_name, $client_id])["id"];
+            if($property_id == null)
+            {
+                http_response_code(400);
+                return ["msg" => "property_name not valid"];
+            }
+            
             $gauge_type_short_name = $data["gauge_type"];
             $gauge_type_id = DatabaseConnection::execute_statement_single_row("Select id from GaugeType where short_name = ?", [$gauge_type_short_name])["id"];
+            if($gauge_type_id == null)
+            {
+                http_response_code(400);
+                return ["msg" => "gauge_type not valid"];
+            }
+            
             $location_sign = $data["location_sign"];
-            echo $property_name . $client_id  ;
-            echo DatabaseConnection::execute_statement(
+            DatabaseConnection::execute_statement(
                 "insert into Gauge(guid,serial_number,property_id,gauge_type_id,location_sign) values (?,?,?,?,?)",
                 [$guid, $serial_number, $property_id, $gauge_type_id, $location_sign],
                 true
