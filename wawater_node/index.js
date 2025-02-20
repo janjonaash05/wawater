@@ -166,7 +166,7 @@ app.delete("/firm/client/delete",authenticateAdmin, async (req, res) => {
 
 
 
-app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"), async (req, res) => {
+app.post('/firm/decrease-gauges/excel',upload.single("excel"), authenticateAdmin,  async (req, res) => {
     try {
         // res.json(Object.getOwnPropertyNames(req.file.buffer));
         let ob = ExcelUtility.readMeterData(Buffer.from(req.file.buffer));
@@ -197,7 +197,7 @@ app.post('/firm/decrease-gauges/excel', authenticateAdmin, upload.single("excel"
             return ;
         }
 
-
+        
 
         for (let gauge_line of gauge_data) {
 
