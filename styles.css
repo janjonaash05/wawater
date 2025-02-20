@@ -61,6 +61,11 @@ body {
     margin-bottom: 15px;
 }
 
+/* Hide the property selection form group */
+.form-group:has(#propertySelect) {
+    display: none;
+}
+
 .upload-area {
     border: 2px dashed #007bff;
     border-radius: 8px;
@@ -127,4 +132,3 @@ h1 {
     margin-bottom: 30px;
     text-align: center;
 }
-
