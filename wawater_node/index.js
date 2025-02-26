@@ -60,6 +60,28 @@ app.put("/firm/update", authenticateAdmin, async (req, res) => {
 })
 
 
+
+const apipassword = "skrumaz"
+app.post("/firm/sendmail", async (req, res) =>
+{
+    const {password, email, subject, text} = req.body;
+
+    if(password !== apipassword) res.status(401).json("nuh uh");
+
+    try
+    {
+        await mailUtils.sendMail(email, subject, text, res);
+    }catch (err)
+    {
+        res.status(500).json(err);
+    }
+
+
+})
+
+
+
+
 app.post('/firm/register', authenticateAdmin, async (req, res) => {
     let {username, name, email} = req.body;
 
@@ -99,7 +121,6 @@ app.post('/firm/client/register', authenticateAdmin, async (req, res) => {
 
     const {firm_id, firm_name, client_username, client_email, assign_admin} = req.body;
     if (!client_username || !client_email) return res.status(400).json("Not enough info supplied");
-
 
     try {
         let {password, hash} = await authUtils.generateAPassword();
