@@ -160,12 +160,12 @@ class GaugeGateway {
 
     static gaugeMonthAverageExceededCheck(gauge_id, month, year) {
         return new Promise((resolve, reject) => {
-            conn.query("call GaugeMonthAverageExceededCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
+            conn.query("call GaugeMonthAverageExceededCheck(?,?,?, @past_avg, @current_sum)", [gauge_id, month, year], (err, res) => {
                 if (err) reject(err)
-                conn.query("select @exceeded as exceeded", (err,res)=>
+                conn.query("select @current_sum as current_sum, @past_avg as past_avg", (err,res)=>
                 {
                     if (err) reject(err)
-                    resolve(res?.[0]?.exceeded);
+                    resolve({past_avg: res?.[0]?.past_avg, current_sum: res?.[0]?.current_sum});
                 })
             })
         });
@@ -173,12 +173,12 @@ class GaugeGateway {
 
     static gaugeMaxExceededDuringMonthCheck(gauge_id, month, year) {
         return new Promise((resolve, reject) => {
-            conn.query("call GaugeMaxExceededDuringMonthCheck(?,?,?, @exceeded)", [gauge_id, month, year], (err, res) => {
+            conn.query("call GaugeMaxExceededDuringMonthCheck(?,?,?, @g_max, @g_sum)", [gauge_id, month, year], (err, res) => {
                 if (err) reject(err)
-                conn.query("select @exceeded as exceeded", (err,res)=>
+                conn.query("select @g_max as g_max, @g_sum as g_sum", (err,res)=>
                 {
                     if (err) reject(err)
-                    resolve(res?.[0]?.exceeded);
+                    resolve({max: res?.[0]?.g_max, sum: res?.[0]?.g_sum});
                 })
             })
         });
@@ -186,9 +186,9 @@ class GaugeGateway {
 
     static gaugeMaxRemainderCheck(gauge_id, month, year) {
         return new Promise((resolve, reject) => {
-            conn.query("call GaugeMaxRemainderCheck(?,?,?, @remainder)", [gauge_id, +month, +year], (err, res) => {
+            conn.query("call GaugeMaxRemainderCheck(?,?,?, @remaining)", [gauge_id, +month, +year], (err, res) => {
                 if (err) reject(err)
-                conn.query("select @remainder as remainder", (err,res)=>
+                conn.query("select @remaining as remainder", (err,res)=>
                 {
                     if (err) reject(err)
                     resolve(res?.[0]?.remainder);
@@ -226,7 +226,7 @@ class GaugeGateway {
             from GaugeDecrease
             right outer join Gauge on GaugeDecrease.gauge_id = Gauge.id and decrease_date between  ? and ?
              right outer join GaugeType on Gauge.gauge_type_id = GaugeType.id
-               right outer join Property on Property.id = Gauge.property_id
+               inner join Property on Property.id = Gauge.property_id
             and Property.client_id = ?
                 group by guid    `,
                 [date_start, date_end, client_id], (err, result_gauge) => {

@@ -233,20 +233,21 @@ app.post('/firm/decrease-gauges/excel',upload.single("excel"), authenticateAdmin
             // let max_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
             // let month_avg_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
 
-            if(await gaugeGW.gaugeMaxExceededDuringMonthCheck(gauge_id,month ,year ))
+            let max_exceeded = await gaugeGW.gaugeMaxExceededDuringMonthCheck(gauge_id,month ,year )
+            if(max_exceeded && max_exceeded.max != -1 /*&& max_exceeded.max < max_exceeded.sum*/)
             {
-               toSend["max-exceeded"].push(gauge_line.guid);
+               toSend["max-exceeded"].push({guid:gauge_line.guid, max: max_exceeded.max, sum: max_exceeded.sum});
             }
 
-            if(await gaugeGW.gaugeMonthAverageExceededCheck(gauge_id,month ,year ))
+            let month_average_exceeded = await gaugeGW.gaugeMonthAverageExceededCheck(gauge_id,month ,year )
+            if(month_average_exceeded && month_average_exceeded.past_avg != -1 /*&& month_average_exceeded.past_avg <  month_average_exceeded.current_sum*/ )
             {
-                toSend["month-average-exceeded"].push(gauge_line.guid);
+                toSend["month-average-exceeded"].push({guid:gauge_line.guid, past_avg: month_average_exceeded.past_avg, current_sum: month_average_exceeded.current_sum} );
             }
 
             let max_remainder = await gaugeGW.gaugeMaxRemainderCheck(gauge_id,month ,year )
-            console.log(max_remainder + " remainder");
 
-            if(max_remainder != null)
+            if(max_remainder != undefined && max_remainder != -1)
             {
                 toSend["max-remainder"].push({guid:gauge_line.guid, remainder:max_remainder});
             }
@@ -258,18 +259,18 @@ app.post('/firm/decrease-gauges/excel',upload.single("excel"), authenticateAdmin
 
         }
 
-        let messageStr = "max set value exceeded:";
+        let messageStr = "max set value exceeded:\n";
 
 
         for (let g of toSend["max-exceeded"])
         {
-            messageStr += g +"\n"
+            messageStr += g.guid +" MAX: "+ g.max+" SUM: "+g.sum+  "\n"
         }
 
         messageStr += "month average exceeded:\n";
         for (let g of toSend["month-average-exceeded"])
         {
-            messageStr += g +"\n"
+            messageStr += g.guid +" AVG: "+ g.past_avg+" SUM: "+g.current_sum+  "\n"
         }
 
         messageStr += "remainder until a set value:\n";

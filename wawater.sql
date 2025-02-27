@@ -25,15 +25,15 @@ create table GaugeMaxRemainder(id int primary key auto_increment, client_id int 
 
 
 DELIMITER $$
-CREATE PROCEDURE GaugeMonthAverageExceededCheck(in `g_id` int, in `m` int,in `y` int, out `exceeded` bit) 
+CREATE PROCEDURE GaugeMonthAverageExceededCheck(in `g_id` int, in `m` int,in `y` int, out `past_avg` decimal, out `current_sum` decimal) 
 begin
 if not exists (select 1 from GaugeMonthAverageExceeded where gauge_id = `g_id`) 
 then
-set `exceeded` = 0;
+set `past_avg` = -1;
+set `current_sum` = -1;
 else
-set @past_avg = (select avg(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) = `m`));
-set @current_sum = (select sum(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) = `m` and YEAR(decrease_date) = `y`));       
-set `exceeded` = ( @current_sum > @past_avg);
+set `past_avg` = (select avg(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) = `m`));
+set `current_sum`= (select sum(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) = `m` and YEAR(decrease_date) = `y`));       
 end if;
 end$$
 DELIMITER ;
@@ -41,16 +41,16 @@ DELIMITER ;
 
 
 DELIMITER $$
-create procedure GaugeMaxExceededDuringMonthCheck(in `g_id` int, in `m` int,in  `y` int, out `exceeded` bit)
+create procedure GaugeMaxExceededDuringMonthCheck(in `g_id` int, in `m` int,in  `y` int, out `g_max` int, out `g_sum` int  )
 begin
 if not exists (select 1 from GaugeMaxExceeded where gauge_id = `g_id`) 
 then
 select 'not in';
-set `exceeded` = 0;
+set `g_max` = null;
+set `g_sum` = null;
 else
-set @max = (select max_value from GaugeMaxExceeded where gauge_id = `g_id`);
-set @sum = (select sum(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) =  `m` and YEAR(decrease_date) =  `y`));
-set `exceeded` = ( @sum > @max); 
+set `g_max` = (select max_value from GaugeMaxExceeded where gauge_id = `g_id`);
+set `g_sum` = (select sum(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) =  `m` and YEAR(decrease_date) =  `y`));
 end if;
 end$$
 DELIMITER ;
@@ -59,19 +59,19 @@ DELIMITER ;
 
 
 DELIMITER $$
-create procedure GaugeMaxRemainderCheck(in `g_id` int, in `m` int,in  `y` int, out `remainder` int)
+create procedure GaugeMaxRemainderCheck(in `g_id` int, in `m` int,in  `y` int, out `remaining` int)
 begin
-if not exists (select 1 from GaugeMaxRemainder where gauge_id = `g_id`) 
+if not exists (select 1 from GaugeMaxExceeded where gauge_id = `g_id`) 
 then
-select 'not in';
-set `remainder` = null;
+set `remaining` = -1;
 else
-set @max = (select max_value from GaugeMaxRemainder where gauge_id = `g_id`);
+set @max = (select max_value from GaugeMaxExceeded where gauge_id = `g_id`);
 set @sum = (select sum(value) from GaugeDecrease where (gauge_id = `g_id`  and MONTH(decrease_date) =  `m` and YEAR(decrease_date) =  `y`));
-set `remainder` = (@max - @sum); 
+set `remaining` = GREATEST(0,  @max - @sum); 
 end if;
 end$$
 DELIMITER ;
+
 
 
 
