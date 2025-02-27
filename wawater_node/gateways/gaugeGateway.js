@@ -188,10 +188,11 @@ class GaugeGateway {
         return new Promise((resolve, reject) => {
             conn.query("call GaugeMaxRemainderCheck(?,?,?, @remaining)", [gauge_id, +month, +year], (err, res) => {
                 if (err) reject(err)
-                conn.query("select @remaining as remainder", (err,res)=>
+                conn.query("select @remaining as remainder", (err,rem)=>
                 {
+                    console.log(res)
                     if (err) reject(err)
-                    resolve(res?.[0]?.remainder);
+                    resolve(rem?.[0]?.remainder);
                 })
             })
         });

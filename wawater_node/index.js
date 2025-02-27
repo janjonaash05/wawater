@@ -11,6 +11,9 @@ const authUtils = require("./authUtils.js");
 const mailUtils = require("./mailUtils.js");
 const {json} = require("express");
 
+
+const conn = require("./dbconn.js");
+
 const app = express();
 //app.use(express.static(path.join(__dirname, "public")));
 
@@ -218,8 +221,6 @@ app.post('/firm/decrease-gauges/excel',upload.single("excel"), authenticateAdmin
             return ;
         }
 
-        
-
         for (let gauge_line of gauge_data) {
 
 
@@ -234,20 +235,20 @@ app.post('/firm/decrease-gauges/excel',upload.single("excel"), authenticateAdmin
             // let month_avg_registered = await gaugeGW.gaugeRegistered(gauge_id, "GaugeMaxExceeded")
 
             let max_exceeded = await gaugeGW.gaugeMaxExceededDuringMonthCheck(gauge_id,month ,year )
-            if(max_exceeded && max_exceeded.max != -1 /*&& max_exceeded.max < max_exceeded.sum*/)
+            if(max_exceeded && max_exceeded?.max != -1 /*&& max_exceeded.max < max_exceeded.sum*/)
             {
                toSend["max-exceeded"].push({guid:gauge_line.guid, max: max_exceeded.max, sum: max_exceeded.sum});
             }
 
             let month_average_exceeded = await gaugeGW.gaugeMonthAverageExceededCheck(gauge_id,month ,year )
-            if(month_average_exceeded && month_average_exceeded.past_avg != -1 /*&& month_average_exceeded.past_avg <  month_average_exceeded.current_sum*/ )
+            if(month_average_exceeded && month_average_exceeded?.past_avg != -1 /*&& month_average_exceeded.past_avg <  month_average_exceeded.current_sum*/ )
             {
                 toSend["month-average-exceeded"].push({guid:gauge_line.guid, past_avg: month_average_exceeded.past_avg, current_sum: month_average_exceeded.current_sum} );
             }
 
             let max_remainder = await gaugeGW.gaugeMaxRemainderCheck(gauge_id,month ,year )
 
-            if(max_remainder != undefined && max_remainder != -1)
+            if(max_remainder !== undefined && max_remainder != -1)
             {
                 toSend["max-remainder"].push({guid:gauge_line.guid, remainder:max_remainder});
             }
@@ -367,7 +368,7 @@ app.post("/client/gauge-trigger/max-remainder/register", authenticateClient, asy
         await gaugeGW.gaugeMaxRemainderRegister(client_id, gauge_id, max_value);
         res.status(200).send("OK");
     } catch (err) {
-        if(err.errno === 1062) res.status(400).json({msg: "gauge already registered"});
+        if(err.errno === 1062) return res.status(400).json({msg: "gauge already registered"});
         res.status(400).json({msg: err});
     }
 })
@@ -398,7 +399,7 @@ app.post("/client/gauge-trigger/max-exceeded/register", authenticateClient, asyn
         await gaugeGW.gaugeMaxExceededRegister(client_id, gauge_id, max_value);
         res.status(200).send("OK");
     } catch (err) {
-        if(err.errno === 1062) res.status(400).json({msg: "gauge already registered"});
+        if(err.errno === 1062) return res.status(400).json({msg: "gauge already registered"});
         res.status(400).json({msg: err});
     }
 })
@@ -429,7 +430,7 @@ app.post("/client/gauge-trigger/month-avg-exceeded/register", authenticateClient
         await gaugeGW.gaugeMonthAverageExceededRegister(client_id, gauge_id);
         res.status(200).send("OK");
     } catch (err) {
-        if(err.errno === 1062) res.status(400).json({msg: "gauge already registered"});
+        if(err.errno === 1062) return res.status(400).json({msg: "gauge already registered"});
         res.status(400).json({msg: err});
     }
 })
@@ -454,7 +455,7 @@ app.post("/client/gauge-trigger/month-overview/register", authenticateClient, as
         await gaugeGW.gaugeMonthOverviewRegister(client_id);
         res.status(200).send("OK");
     } catch (err) {
-        if(err.errno === 1062) res.status(400).json({msg: "gauge already registered"});
+        if(err.errno === 1062) return res.status(400).json({msg: "gauge already registered"});
         res.status(400).json({msg: err});
     }
 })
